@@ -1,0 +1,2985 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UT ExamPrep Pro — Simulasi & Manajemen Kisi-Kisi Universitas Terbuka</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        try {
+            if (window.tailwind) {
+                tailwind.config = {
+                    darkMode: 'class',
+                    theme: {
+                        extend: {
+                            fontFamily: {
+                                sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                                heading: ['Plus Jakarta Sans', 'Inter', 'sans-serif']
+                            }
+                        }
+                    }
+                };
+            }
+        } catch (e) {
+            console.warn('Tailwind config fallback aktif:', e);
+        }
+    </script>
+
+    <style>
+        :root {
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+        }
+        html.dark {
+            --bg-main: #020617;
+            --bg-card: #0f172a;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border-color: #1e293b;
+        }
+        html, body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            overflow-x: clip;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .font-heading {
+            font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+        }
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+        .transform-style-3d {
+            transform-style: preserve-3d;
+            transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .backface-hidden {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+
+        /* Bar navigasi Prev/Next selalu terkunci di bawah layar walau di-scroll mentok ke atas */
+        #quiz-nav-bar {
+            display: none;
+        }
+        body.quiz-active #quiz-nav-bar {
+            display: block !important;
+            position: fixed !important;
+            top: auto !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100vw !important;
+            max-width: 100% !important;
+            z-index: 2147483647 !important;
+            margin: 0 !important;
+            padding: 10px 16px calc(10px + env(safe-area-inset-bottom)) !important;
+            border-top: 1px solid var(--border-color);
+            background-color: var(--bg-card);
+            box-shadow: 0 -6px 24px rgba(15, 23, 42, 0.18);
+            transform: translateZ(0);
+        }
+        body.quiz-active {
+            padding-bottom: 96px !important;
+        }
+        body.quiz-active #toast-container {
+            bottom: 86px !important;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        html.dark ::-webkit-scrollbar-thumb {
+            background: #334155;
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-indigo-500 selection:text-white quiz-active">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- ===================================================================== -->
+    <!-- HEADER UTAMA                                                          -->
+    <!-- ===================================================================== -->
+    <header class="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-700 text-white flex items-center justify-center shadow-md shadow-indigo-500/20 font-heading font-extrabold text-lg">
+                    UT
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-heading font-extrabold text-base sm:text-lg tracking-tight text-slate-900 dark:text-white">
+                            UT ExamPrep <span class="text-indigo-600 dark:text-indigo-400">Pro</span>
+                        </h1>
+                        <span id="storage-status-pill" class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/60">
+                            Auto-Save Aktif
+                        </span>
+                    </div>
+                    <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                        Simulasi UAS, Flashcard, Studi Kasus & Generator Kisi-Kisi PDF
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 sm:gap-3">
+                <div class="flex items-center gap-2.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                    <div class="text-right">
+                        <div class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Skor Kuis</div>
+                        <div id="header-score-badge" class="text-xs sm:text-sm font-extrabold text-indigo-600 dark:text-indigo-400">
+                            0 Benar (0%)
+                        </div>
+                    </div>
+                    <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                </div>
+
+                <button onclick="toggleDarkMode()" title="Ganti Tema Terang/Gelap" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition">
+                    <i id="theme-icon" class="fas fa-moon text-sm"></i>
+                </button>
+
+                <button onclick="openResetModal()" title="Kosongkan Skor & Bank Soal" class="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/70 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 text-xs font-bold transition flex items-center gap-1.5">
+                    <i class="fas fa-rotate-left"></i>
+                    <span class="hidden md:inline">Reset</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===================================================================== -->
+    <!-- KONTEN UTAMA                                                          -->
+    <!-- ===================================================================== -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+        <!-- BARIS 1: FILTER MATA KULIAH TERPADU -->
+        <section class="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-800 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                    <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Filter Mata Kuliah Aktif
+                    </h2>
+                </div>
+                <div id="course-bank-summary" class="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    Memuat bank soal...
+                </div>
+            </div>
+
+            <div id="course-filter-container" class="flex flex-wrap gap-2"></div>
+        </section>
+
+        <!-- BARIS 2: NAVIGASI MODE BELAJAR (4 TAB UTAMA) -->
+        <nav class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 bg-slate-200/70 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <button onclick="switchMode('quiz')" id="tab-btn-quiz" class="mode-tab-btn py-2.5 px-3 rounded-xl font-heading font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs">
+                <i class="fas fa-list-check"></i>
+                <span>Kuis Pilihan Ganda</span>
+                <span id="badge-count-quiz" class="px-1.5 py-0.5 text-[11px] rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">0</span>
+            </button>
+
+            <button onclick="switchMode('flashcard')" id="tab-btn-flashcard" class="mode-tab-btn py-2.5 px-3 rounded-xl font-heading font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-800/60">
+                <i class="fas fa-layer-group"></i>
+                <span>Flashcard Konsep</span>
+                <span id="badge-count-fc" class="px-1.5 py-0.5 text-[11px] rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200">0</span>
+            </button>
+
+            <button onclick="switchMode('essay')" id="tab-btn-essay" class="mode-tab-btn py-2.5 px-3 rounded-xl font-heading font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-800/60">
+                <i class="fas fa-file-pen"></i>
+                <span>Studi Kasus & Uraian</span>
+                <span id="badge-count-essay" class="px-1.5 py-0.5 text-[11px] rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200">0</span>
+            </button>
+
+            <button onclick="switchMode('manage')" id="tab-btn-manage" class="mode-tab-btn py-2.5 px-3 rounded-xl font-heading font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-800/60">
+                <i class="fas fa-folder-plus text-amber-500"></i>
+                <span>Kelola Matkul & PDF</span>
+            </button>
+        </nav>
+
+        <!-- ================================================================= -->
+        <!-- MODE 1: KUIS PILIHAN GANDA INTERAKTIF                             -->
+        <!-- ================================================================= -->
+        <section id="view-quiz" class="space-y-5">
+            <div class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">Jumlah Soal:</span>
+                    <button onclick="setQuizLimit(10)" id="limit-btn-10" class="limit-btn px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-indigo-400 transition">
+                        10 Soal
+                    </button>
+                    <button onclick="setQuizLimit(20)" id="limit-btn-20" class="limit-btn px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-indigo-400 transition">
+                        20 Soal
+                    </button>
+                    <button onclick="setQuizLimit(30)" id="limit-btn-30" class="limit-btn px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-indigo-400 transition">
+                        30 Soal
+                    </button>
+                    <button onclick="setQuizLimit('ALL')" id="limit-btn-ALL" class="limit-btn px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-amber-400 hover:bg-amber-500 text-slate-950 shadow-xs transition flex items-center gap-1.5">
+                        <i class="fas fa-layer-group"></i>
+                        <span id="btn-all-questions-label">Ambil Semua Soal (0)</span>
+                    </button>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="prepareQuizList(true)" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 transition flex items-center gap-1.5">
+                        <i class="fas fa-shuffle"></i> Acak Soal
+                    </button>
+                    <button onclick="retryWrongQuestions()" id="btn-retry-wrong" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-800 transition flex items-center gap-1.5">
+                        <i class="fas fa-rotate-right"></i> Ulangi Soal Salah (<span id="wrong-count-label">0</span>)
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                <!-- Kartu Pertanyaan (8 Kolom) -->
+                <div class="lg:col-span-8 bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-800 space-y-5">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3.5">
+                        <div class="flex items-center gap-2">
+                            <span id="quiz-number-badge" class="px-3 py-1 rounded-lg bg-indigo-600 text-white font-heading font-extrabold text-xs">
+                                Soal 0 / 0
+                            </span>
+                            <span id="quiz-course-tag" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-bold text-xs">
+                                -
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="quiz-topic-tag" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                                Topik Modul
+                            </span>
+                            <button onclick="toggleDoubtCurrent()" id="btn-doubt-toggle" class="px-2.5 py-1 rounded-lg border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 text-xs font-bold hover:bg-amber-50 dark:hover:bg-amber-950/50 transition">
+                                <i class="fas fa-flag mr-1"></i> Ragu-ragu
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="quiz-question-text" class="text-base sm:text-lg font-semibold text-slate-900 dark:text-white leading-relaxed">
+                        Belum ada soal tersedia. Silakan import JSON, tambah soal manual, atau unggah file PDF kisi-kisi pada tab Kelola Matkul & PDF.
+                    </div>
+
+                    <div id="quiz-options-container" class="space-y-2.5"></div>
+
+                    <div id="quiz-explanation-box" class="hidden p-4 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/70 space-y-1.5">
+                        <div class="flex items-center gap-2 font-heading font-bold text-xs uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                            <i class="fas fa-lightbulb text-amber-500"></i> Pembahasan Konseptual
+                        </div>
+                        <p id="quiz-explanation-text" class="text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed"></p>
+                    </div>
+                </div>
+
+                <!-- Peta Nomor Soal (4 Kolom) -->
+                <div class="lg:col-span-4 bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-800 space-y-3.5">
+                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                        <h3 class="font-heading font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                            <i class="fas fa-grid-2 text-indigo-600"></i> Peta Nomor Soal
+                        </h3>
+                        <span id="map-total-label" class="text-xs font-bold text-slate-500">0 Nomor</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-1.5 text-[11px] text-slate-600 dark:text-slate-400">
+                        <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-indigo-600 inline-block"></span> Aktif</div>
+                        <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> Benar</div>
+                        <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-rose-500 inline-block"></span> Salah</div>
+                        <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-amber-400 inline-block"></span> Ragu-ragu</div>
+                    </div>
+
+                    <div id="quiz-number-grid" class="grid grid-cols-6 sm:grid-cols-8 lg:grid-cols-6 gap-1.5 max-h-[340px] overflow-y-auto pr-1"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================= -->
+        <!-- MODE 2: FLASHCARD KONSEP 3D FLIP                                  -->
+        <!-- ================================================================= -->
+        <section id="view-flashcard" class="hidden space-y-5">
+            <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <span id="fc-counter-badge" class="px-3 py-1 rounded-xl bg-indigo-600 text-white font-heading font-bold text-xs">
+                        Kartu 0 / 0
+                    </span>
+                    <span id="fc-mastered-stats" class="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                        Sudah Hafal: 0 kartu
+                    </span>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <label class="inline-flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl">
+                        <input type="checkbox" id="fc-unmastered-only" onchange="prepareFlashcardList()" class="rounded text-indigo-600">
+                        <span>Hanya Belum Hafal</span>
+                    </label>
+                    <button onclick="shuffleFlashcards()" class="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-xs font-bold hover:bg-indigo-100 transition">
+                        <i class="fas fa-shuffle mr-1"></i> Acak Kartu
+                    </button>
+                </div>
+            </div>
+
+            <div class="max-w-3xl mx-auto">
+                <div onclick="flipFlashcard()" class="perspective-1000 cursor-pointer select-none">
+                    <div id="fc-card-inner" class="relative w-full min-h-[290px] sm:min-h-[330px] transform-style-3d">
+                        <div class="backface-hidden absolute inset-0 bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-10 shadow-md border-2 border-indigo-100 dark:border-slate-800 flex flex-col justify-between">
+                            <div class="flex items-center justify-between">
+                                <span id="fc-front-course" class="px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono font-bold text-xs">
+                                    FLASHCARD
+                                </span>
+                                <span class="text-xs font-semibold text-slate-400">
+                                    <i class="fas fa-hand-pointer mr-1"></i> Klik kartu untuk membalik
+                                </span>
+                            </div>
+
+                            <div class="text-center my-auto py-4">
+                                <div class="text-[11px] font-bold uppercase tracking-widest text-indigo-500 mb-2">Konsep / Istilah Kunci</div>
+                                <h3 id="fc-front-text" class="font-heading font-extrabold text-xl sm:text-2xl text-slate-900 dark:text-white leading-snug">
+                                    Belum ada flashcard tersedia.
+                                </h3>
+                            </div>
+
+                            <div class="flex items-center justify-between text-xs text-slate-400">
+                                <span id="fc-status-pill" class="font-bold text-amber-600">Status: Perlu Diulang</span>
+                                <span>Sisi Depan</span>
+                            </div>
+                        </div>
+
+                        <div class="backface-hidden rotate-y-180 absolute inset-0 bg-gradient-to-br from-indigo-600 to-blue-700 text-white rounded-3xl p-6 sm:p-10 shadow-lg flex flex-col justify-between">
+                            <div class="flex items-center justify-between">
+                                <span class="px-3 py-1 rounded-full bg-white/15 text-white font-bold text-xs">
+                                    Penjelasan & Inti Kisi-Kisi
+                                </span>
+                                <span class="text-xs text-indigo-100">
+                                    <i class="fas fa-rotate mr-1"></i> Klik untuk kembali
+                                </span>
+                            </div>
+
+                            <div class="my-auto py-3 space-y-3 text-center">
+                                <p id="fc-back-text" class="text-base sm:text-lg font-semibold leading-relaxed">
+                                    Tambahkan flashcard di tab Kelola Matkul & PDF.
+                                </p>
+                                <div id="fc-note-box" class="hidden bg-black/20 rounded-xl p-3 text-xs text-amber-200 font-medium"></div>
+                            </div>
+
+                            <div class="text-right text-xs text-indigo-200">
+                                Sisi Belakang
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-3 mt-5">
+                    <button onclick="navigateFlashcard(-1)" class="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-xs sm:text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                        <i class="fas fa-arrow-left mr-1"></i> Sebelumnya
+                    </button>
+
+                    <div class="flex items-center gap-2">
+                        <button onclick="markFlashcardMastered(false)" class="px-4 py-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-xs sm:text-sm transition">
+                            <i class="fas fa-rotate-left mr-1"></i> Perlu Diulang
+                        </button>
+                        <button onclick="markFlashcardMastered(true)" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm transition shadow-xs">
+                            <i class="fas fa-check-circle mr-1"></i> Sudah Hafal
+                        </button>
+                    </div>
+
+                    <button onclick="navigateFlashcard(1)" class="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-xs sm:text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                        Berikutnya <i class="fas fa-arrow-right ml-1"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================= -->
+        <!-- MODE 3: STUDI KASUS & URAIAN                                      -->
+        <!-- ================================================================= -->
+        <section id="view-essay" class="hidden space-y-5">
+            <div class="bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-5 rounded-2xl shadow-xs flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 class="font-heading font-extrabold text-base sm:text-lg">
+                        Latihan Studi Kasus & Kertas Kerja Uraian
+                    </h2>
+                    <p class="text-xs text-slate-300 mt-0.5">
+                        Tuliskan jawaban penjurnalan, perhitungan, atau analisis Anda di kertas kerja (tersimpan otomatis), lalu bandingkan dengan kunci penyelesaian.
+                    </p>
+                </div>
+                <span class="px-3 py-1 rounded-full bg-amber-400 text-slate-950 font-extrabold text-xs">
+                    Studi Kasus & Uraian
+                </span>
+            </div>
+
+            <div id="essay-cases-container" class="space-y-5"></div>
+        </section>
+
+        <!-- ================================================================= -->
+        <!-- MODE 4: KELOLA MATKUL & KISI-KISI (TERMASUK UPLOAD PDF)           -->
+        <!-- ================================================================= -->
+        <section id="view-manage" class="hidden space-y-6">
+            <div class="bg-slate-900 text-white p-5 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h2 class="font-heading font-extrabold text-base sm:text-lg flex items-center gap-2">
+                        <i class="fas fa-graduation-cap text-amber-400"></i> Pusat Manajemen Mata Kuliah & Kisi-Kisi Lintas Semester
+                    </h2>
+                    <p class="text-xs text-slate-300 mt-1">
+                        Unggah file PDF kisi-kisi/modul semester baru, tambah matkul custom, atau backup bank soal Anda ke file <code>.json</code>.
+                    </p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="exportBankToJSON()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition flex items-center gap-1.5">
+                        <i class="fas fa-download"></i> Backup Bank Soal (.json)
+                    </button>
+                    <label class="px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs transition flex items-center gap-1.5 cursor-pointer">
+                        <i class="fas fa-upload"></i> Restore File (.json)
+                        <input type="file" accept=".json,application/json" class="hidden" onchange="restoreBankFromJSONFile(event)">
+                    </label>
+                    <button onclick="openResetModal()" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition flex items-center gap-1.5">
+                        <i class="fas fa-rotate-left"></i> Reset Kosong
+                    </button>
+                </div>
+            </div>
+
+            <!-- UPLOAD FILE PDF -->
+            <div class="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl shadow-xs border-2 border-indigo-200 dark:border-indigo-900/70 space-y-5">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3.5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center text-lg">
+                            <i class="fas fa-file-pdf"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-heading font-bold text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                                Upload File PDF Kisi-Kisi / Modul / Bank Soal
+                                <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">1-Klik Praktis</span>
+                            </h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">
+                                Unggah 1 atau beberapa file PDF semester baru untuk otomatis diubah menjadi soal PG, Flashcard & Studi Kasus.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                    <div class="lg:col-span-7 space-y-3.5">
+                        <div id="pdf-drop-zone" onclick="document.getElementById('pdf-file-input').click()" class="border-2 border-dashed border-indigo-300 dark:border-indigo-700 hover:border-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/20 hover:bg-indigo-50/80 rounded-2xl p-6 text-center cursor-pointer transition-all group">
+                            <input type="file" id="pdf-file-input" accept="application/pdf,.pdf" multiple class="hidden" onchange="handlePDFFileSelect(event)">
+                            <div class="w-12 h-12 rounded-2xl bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs mx-auto flex items-center justify-center text-2xl group-hover:scale-105 transition-transform mb-3">
+                                <i class="fas fa-cloud-arrow-up"></i>
+                            </div>
+                            <p class="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+                                Klik untuk pilih file PDF atau Drag & Drop di sini
+                            </p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                Mendukung multi-file PDF (Kisi-kisi UAS UT, Rangkuman BMP, atau File Soal PDF)
+                            </p>
+                        </div>
+
+                        <div id="pdf-status-card" class="hidden bg-slate-50 dark:bg-slate-800/70 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2.5">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <i class="fas fa-file-pdf text-rose-500 text-base shrink-0"></i>
+                                    <span id="pdf-files-summary" class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
+                                        0 file dipilih
+                                    </span>
+                                </div>
+                                <button onclick="clearUploadedPDF()" class="text-xs text-rose-600 hover:underline font-semibold shrink-0">
+                                    Hapus File
+                                </button>
+                            </div>
+                            <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                                <div id="pdf-extract-bar" class="bg-indigo-600 h-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <div class="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                                <span id="pdf-extract-status">Menunggu file PDF...</span>
+                                <span id="pdf-char-count" class="font-mono font-semibold">0 karakter</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Kode Matkul (Opsional)</label>
+                                <input type="text" id="pdf-target-code" placeholder="Auto / cth: EKMA4315" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-mono uppercase">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Nama Matkul (Opsional)</label>
+                                <input type="text" id="pdf-target-name" placeholder="Auto / Nama Matkul" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Target Jumlah Soal PG</label>
+                                <select id="pdf-question-count" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-semibold">
+                                    <option value="20">20 Soal PG + 10 Kartu</option>
+                                    <option value="30" selected>30 Soal PG + 15 Kartu</option>
+                                    <option value="50">50 Soal PG + 20 Kartu</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-4 text-xs">
+                            <label class="inline-flex items-center gap-2 cursor-pointer font-semibold text-slate-700 dark:text-slate-200">
+                                <input type="radio" name="pdf-import-mode" value="merge" checked class="text-indigo-600">
+                                <span>Tambahkan ke Bank Soal Saat Ini (Merge)</span>
+                            </label>
+                            <label class="inline-flex items-center gap-2 cursor-pointer font-semibold text-rose-700 dark:text-rose-400">
+                                <input type="radio" name="pdf-import-mode" value="replace" class="text-rose-600">
+                                <span>Ganti Total untuk Semester Baru (Hapus Lama)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-5 flex flex-col justify-between gap-3 bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
+                        <div class="space-y-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-extrabold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">
+                                    <i class="fas fa-bolt text-amber-500 mr-1"></i> Jalur A: Generate Otomatis (1-Klik)
+                                </span>
+                                <span class="text-[10px] text-slate-400">Gemini API</span>
+                            </div>
+                            <div class="flex gap-1.5">
+                                <input type="password" id="gemini-api-key-input" onchange="saveGeminiApiKey(this.value)" placeholder="Masukkan Gemini API Key (AIza...)" class="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-mono">
+                                <select id="gemini-model-select" class="px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-semibold">
+                                    <option value="gemini-2.5-flash" selected>gemini-2.5-flash</option>
+                                    <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                                </select>
+                            </div>
+                            <button id="btn-generate-pdf-ai" onclick="generateBankFromPDFWithGemini()" class="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-xs">
+                                <i class="fas fa-wand-magic-sparkles text-amber-300"></i>
+                                <span id="btn-generate-pdf-ai-label">Proses PDF Jadi Bank Soal Sekarang</span>
+                            </button>
+                        </div>
+
+                        <div class="space-y-1.5 pb-3 border-b border-slate-200 dark:border-slate-700">
+                            <span class="text-xs font-extrabold text-amber-700 dark:text-amber-400 uppercase tracking-wider block">
+                                <i class="fas fa-copy mr-1"></i> Jalur B: Tanpa API Key (Gratis via Chat)
+                            </span>
+                            <button onclick="copyPDFTextWithPrompt()" class="w-full py-2 px-3.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-extrabold text-xs transition flex items-center justify-center gap-2">
+                                <i class="fas fa-clipboard-check"></i> Copy Teks PDF + Prompt AI (Tinggal Paste)
+                            </button>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <span class="text-xs font-extrabold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">
+                                <i class="fas fa-magnifying-glass-chart mr-1"></i> Jalur C: Smart UT Kisi-Kisi Parser (100% Soal)
+                            </span>
+                            <button onclick="parseDirectQuestionsFromPDF()" class="w-full py-2.5 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs transition flex items-center justify-center gap-2 shadow-xs">
+                                <i class="fas fa-bolt-lightning text-amber-300"></i> Ekstrak Semua Soal + Kunci Otomatis dari PDF
+                            </button>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
+                                Otomatis mendeteksi soal bernomor, highlight kuning jawaban benar, &amp; tabel <strong>KUNCI JAWABAN</strong> multi-kolom.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="pdf-preview-drawer" class="hidden bg-emerald-50/70 dark:bg-emerald-950/30 border-2 border-emerald-400 dark:border-emerald-700 rounded-2xl p-4 sm:p-5 space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200 dark:border-emerald-800/70 pb-3">
+                        <div class="space-y-0.5">
+                            <div class="flex items-center gap-2">
+                                <span class="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-extrabold uppercase tracking-wider">
+                                    Hasil Ekstraksi PDF Siap
+                                </span>
+                                <span id="pdf-preview-stats-badge" class="text-xs sm:text-sm font-extrabold text-emerald-900 dark:text-emerald-200">
+                                    Berhasil mengekstrak 0 Soal PG &amp; 0 Kunci Jawaban!
+                                </span>
+                            </div>
+                            <p id="pdf-preview-subinfo" class="text-xs text-slate-600 dark:text-slate-300">
+                                Periksa pratinjau soal &amp; kunci jawaban di bawah, atau langsung mulai latihan penuh.
+                            </p>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button onclick="closePDFPreviewDrawer()" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-bold text-xs hover:bg-slate-50 transition">
+                                Tutup
+                            </button>
+                            <button onclick="commitParsedPDFToBank()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-sm transition flex items-center gap-2">
+                                <i class="fas fa-play"></i>
+                                <span id="btn-commit-pdf-label">Simpan &amp; Mulai Latihan Semua (0 Soal)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="pdf-preview-list" class="max-h-[360px] overflow-y-auto space-y-2.5 pr-1"></div>
+                </div>
+            </div>
+
+            <!-- Grid 2 Kolom: Daftar Matkul & Import JSON -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-800 space-y-5">
+                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <h3 class="font-heading font-bold text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                            <i class="fas fa-book text-indigo-600"></i> 1. Daftar Mata Kuliah Aktif
+                        </h3>
+                        <span id="manage-course-count" class="text-xs font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 px-2.5 py-1 rounded-full">
+                            0 Matkul
+                        </span>
+                    </div>
+
+                    <form onsubmit="handleAddCourse(event)" class="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+                        <div class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            + Tambah Mata Kuliah Baru (Semester Ini / Depan)
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            <input type="text" id="new-course-code" required placeholder="Kode (cth: EKMA4313)" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs sm:text-sm font-mono uppercase outline-none">
+                            <input type="text" id="new-course-name" required placeholder="Nama Mata Kuliah Lengkap" class="sm:col-span-2 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs sm:text-sm outline-none">
+                        </div>
+                        <div class="flex items-center justify-between gap-2">
+                            <input type="text" id="new-course-short" required placeholder="Nama Singkat (cth: Akuntansi Keuangan)" class="flex-1 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs sm:text-sm outline-none">
+                            <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition shrink-0">
+                                <i class="fas fa-plus mr-1"></i> Tambah Matkul
+                            </button>
+                        </div>
+                    </form>
+
+                    <div id="manage-courses-list" class="space-y-2.5 max-h-[340px] overflow-y-auto pr-1"></div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-800 space-y-5">
+                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <h3 class="font-heading font-bold text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                            <i class="fas fa-wand-magic-sparkles text-amber-500"></i> 2. Import Kisi-Kisi Otomatis (AI / JSON)
+                        </h3>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 space-y-2.5">
+                        <p class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                            <strong>Cara Cepat Pakai di Semester Depan:</strong><br>
+                            1. Klik tombol <strong>"Copy Prompt Generator Soal"</strong> di bawah.<br>
+                            2. Paste ke Gemini/ChatGPT lalu tempelkan teks kisi-kisi atau rangkuman modul UT Anda.<br>
+                            3. Copy hasil JSON dari AI, paste ke kotak di bawah, lalu klik <strong>"Import ke Bank Soal"</strong>!
+                        </p>
+                        <button onclick="copyAIPromptTemplate()" class="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs sm:text-sm transition flex items-center justify-center gap-2">
+                            <i class="fas fa-copy"></i> Copy Prompt Generator Soal untuk AI
+                        </button>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="json-import-input" class="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center justify-between">
+                            <span>Paste JSON Bank Soal / Kisi-Kisi di Sini:</span>
+                            <button onclick="fillSampleJSON()" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">
+                                Isi Contoh Format JSON
+                            </button>
+                        </label>
+                        <textarea id="json-import-input" rows="6" placeholder='{ "courses": [...], "quizzes": [...], "flashcards": [...], "essays": [...] }' class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 p-3 text-xs font-mono outline-none"></textarea>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="importFromJSON(false)" class="flex-1 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5">
+                            <i class="fas fa-file-import"></i> Tambahkan ke Bank Soal (Merge)
+                        </button>
+                        <button onclick="importFromJSON(true)" class="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs sm:text-sm transition flex items-center justify-center gap-1.5">
+                            <i class="fas fa-arrows-rotate"></i> Ganti Total (Semester Baru)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Tambah Soal Satuan Manual -->
+            <div class="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-800 space-y-5">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <h3 class="font-heading font-bold text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                        <i class="fas fa-circle-plus text-emerald-600"></i> 3. Tambah Soal / Kartu / Kasus Manual
+                    </h3>
+                    <div class="flex gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                        <button onclick="switchManualFormType('pg')" id="mform-tab-pg" class="px-3 py-1 rounded-lg text-xs font-bold bg-white dark:bg-slate-700 text-indigo-700 dark:text-white shadow-xs">Soal PG</button>
+                        <button onclick="switchManualFormType('fc')" id="mform-tab-fc" class="px-3 py-1 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300">Flashcard</button>
+                        <button onclick="switchManualFormType('essay')" id="mform-tab-essay" class="px-3 py-1 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300">Studi Kasus</button>
+                    </div>
+                </div>
+
+                <form id="manual-form-pg" onsubmit="handleAddManualPG(event)" class="space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Mata Kuliah</label>
+                            <select id="mpg-course" required class="course-select-dropdown w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs sm:text-sm"></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Topik / Modul Kisi-Kisi</label>
+                            <input type="text" id="mpg-topic" required placeholder="Contoh: Modul 4 - Teori Motivasi" class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs sm:text-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Pertanyaan</label>
+                        <textarea id="mpg-question" rows="2" required placeholder="Tuliskan soal pilihan ganda di sini..." class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs sm:text-sm"></textarea>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <input type="text" id="mpg-opt-0" required placeholder="Pilihan A" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs sm:text-sm">
+                        <input type="text" id="mpg-opt-1" required placeholder="Pilihan B" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs sm:text-sm">
+                        <input type="text" id="mpg-opt-2" required placeholder="Pilihan C" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs sm:text-sm">
+                        <input type="text" id="mpg-opt-3" required placeholder="Pilihan D" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs sm:text-sm">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Kunci Jawaban</label>
+                            <select id="mpg-correct" class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs sm:text-sm font-bold">
+                                <option value="0">Pilihan A</option>
+                                <option value="1">Pilihan B</option>
+                                <option value="2">Pilihan C</option>
+                                <option value="3">Pilihan D</option>
+                            </select>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Pembahasan Jawaban</label>
+                            <input type="text" id="mpg-explanation" required placeholder="Jelaskan alasan mengapa kunci tersebut benar..." class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs sm:text-sm">
+                        </div>
+                    </div>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm transition">
+                        <i class="fas fa-save mr-1"></i> Simpan Soal Pilihan Ganda
+                    </button>
+                </form>
+
+                <form id="manual-form-fc" onsubmit="handleAddManualFC(event)" class="hidden space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Mata Kuliah</label>
+                        <select id="mfc-course" required class="course-select-dropdown w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs sm:text-sm"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Sisi Depan (Konsep / Istilah)</label>
+                        <input type="text" id="mfc-front" required placeholder="Contoh: Perbedaan Efisiensi dan Efektivitas" class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs sm:text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Sisi Belakang (Penjelasan Inti)</label>
+                        <textarea id="mfc-back" rows="2" required placeholder="Tuliskan penjelasan ringkas dan padat..." class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs sm:text-sm"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Catatan Kisi-Kisi Tambahan (Opsional)</label>
+                        <input type="text" id="mfc-note" placeholder="Tips hafalan atau kata kunci UAS..." class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs sm:text-sm">
+                    </div>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm transition">
+                        <i class="fas fa-save mr-1"></i> Simpan Flashcard
+                    </button>
+                </form>
+
+                <form id="manual-form-essay" onsubmit="handleAddManualEssay(event)" class="hidden space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Mata Kuliah</label>
+                            <select id="messay-course" required class="course-select-dropdown w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs sm:text-sm"></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Judul Studi Kasus</label>
+                            <input type="text" id="messay-title" required placeholder="Contoh: Studi Kasus Penyesuaian Beban Dibayar Dimuka" class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs sm:text-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Skenario / Data Soal Kasus</label>
+                        <textarea id="messay-scenario" rows="3" required placeholder="Tuliskan narasi kasus dan instruksi pertanyaan..." class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs sm:text-sm"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Kunci Jawaban / Langkah Penyelesaian</label>
+                        <textarea id="messay-solution" rows="3" required placeholder="Tuliskan langkah penyelesaian atau jurnal yang benar..." class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs sm:text-sm font-mono"></textarea>
+                    </div>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm transition">
+                        <i class="fas fa-save mr-1"></i> Simpan Studi Kasus
+                    </button>
+                </form>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-5 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 text-center text-xs text-slate-500 dark:text-slate-400 space-y-1">
+            <p class="font-semibold text-slate-700 dark:text-slate-200">UT ExamPrep Pro — Platform Belajar &amp; Manajemen Kisi-Kisi Universitas Terbuka</p>
+            <p>Fleksibel untuk seluruh semester • Mendukung Upload PDF Kisi-Kisi &amp; Penyimpanan Otomatis</p>
+        </div>
+    </footer>
+
+    <!-- Bar Navigasi Sebelumnya / Selanjutnya di Luar Main Agar Selalu Terkunci di Bawah -->
+    <div id="quiz-nav-bar" aria-label="Navigasi Soal">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-2">
+            <button type="button" onclick="navigateQuiz(-1)" id="btn-prev-quiz" class="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white font-bold text-xs sm:text-sm hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-2 shrink-0">
+                <i class="fas fa-arrow-left"></i>
+                <span>Sebelumnya</span>
+            </button>
+
+            <div id="quiz-progress-text" class="text-xs font-bold text-slate-600 dark:text-slate-300 text-center">
+                Terjawab: 0 / 0
+            </div>
+
+            <button type="button" onclick="navigateQuiz(1)" id="btn-next-quiz" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-2 shrink-0 shadow-xs">
+                <span>Selanjutnya</span>
+                <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Konfirmasi Reset -->
+    <div id="reset-modal" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+            <div class="flex items-center gap-3 text-rose-600">
+                <div class="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-950 flex items-center justify-center text-lg">
+                    <i class="fas fa-triangle-exclamation"></i>
+                </div>
+                <h3 class="font-heading font-bold text-lg text-slate-900 dark:text-white">Kosongkan Data &amp; Skor?</h3>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                Pilihan ini akan menghapus seluruh soal, flashcard, studi kasus, mata kuliah, serta skor latihan yang tersimpan sehingga bank soal kembali kosong.
+            </p>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeResetModal()" class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800">
+                    Batal
+                </button>
+                <button onclick="executeResetAll()" class="px-4 py-2 rounded-xl bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700">
+                    Ya, Kosongkan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const DEFAULT_COURSES = [];
+        const DEFAULT_QUIZZES = [];
+        const DEFAULT_FLASHCARDS = [];
+        const DEFAULT_ESSAYS = [];
+
+        const STORAGE_KEY = 'ut_examprep_pro_v6';
+        const WINDOW_NAME_PREFIX = 'UT_EXAMPREP_PRO_STATE_V6::';
+        const GEMINI_KEY_STORAGE = 'ut_examprep_gemini_api_key';
+        const IDB_NAME = 'UTExamPrepProDB_V6';
+        const IDB_STORE = 'stateStore';
+        const IDB_KEY = 'mainAppData';
+
+        let appData = {
+            updatedAt: 0,
+            darkMode: false,
+            selectedCourse: 'ALL',
+            activeMode: 'quiz',
+            quizLimit: 'ALL',
+            lastQuizId: null,
+            courses: [],
+            quizzes: [],
+            flashcards: [],
+            essays: [],
+            quizAnswers: {},
+            quizDoubts: {},
+            fcMastered: {},
+            essayNotes: {}
+        };
+
+        let memorySnapshotJSON = null;
+        let lastStorageBackend = 'Auto-Save';
+
+        let activeQuizList = [];
+        let currentQuizIndex = 0;
+        let activeFCList = [];
+        let currentFCIndex = 0;
+        let isFCFlipped = false;
+
+        let extractedPDFState = {
+            files: [],
+            totalPages: 0,
+            fullText: '',
+            structuredLines: []
+        };
+        let pendingParsedPDFPayload = null;
+
+        function resetDataToDefaultObject() {
+            appData = {
+                updatedAt: Date.now(),
+                darkMode: false,
+                selectedCourse: 'ALL',
+                activeMode: 'quiz',
+                quizLimit: 'ALL',
+                lastQuizId: null,
+                courses: JSON.parse(JSON.stringify(DEFAULT_COURSES)),
+                quizzes: JSON.parse(JSON.stringify(DEFAULT_QUIZZES)),
+                flashcards: JSON.parse(JSON.stringify(DEFAULT_FLASHCARDS)),
+                essays: JSON.parse(JSON.stringify(DEFAULT_ESSAYS)),
+                quizAnswers: {},
+                quizDoubts: {},
+                fcMastered: {},
+                essayNotes: {}
+            };
+        }
+
+        function hydrateFromParsedObject(parsed) {
+            if (!parsed || typeof parsed !== 'object') return false;
+            appData.updatedAt = Number(parsed.updatedAt) || 0;
+            appData.darkMode = Boolean(parsed.darkMode);
+            appData.selectedCourse = parsed.selectedCourse || 'ALL';
+            appData.activeMode = ['quiz', 'flashcard', 'essay', 'manage'].includes(parsed.activeMode) ? parsed.activeMode : 'quiz';
+            appData.quizLimit = parsed.quizLimit || 'ALL';
+            appData.lastQuizId = parsed.lastQuizId || null;
+            appData.courses = Array.isArray(parsed.courses) ? parsed.courses : [];
+            appData.quizzes = Array.isArray(parsed.quizzes) ? parsed.quizzes : [];
+            appData.flashcards = Array.isArray(parsed.flashcards) ? parsed.flashcards : [];
+            appData.essays = Array.isArray(parsed.essays) ? parsed.essays : [];
+            appData.quizAnswers = (parsed.quizAnswers && typeof parsed.quizAnswers === 'object') ? parsed.quizAnswers : {};
+            appData.quizDoubts = (parsed.quizDoubts && typeof parsed.quizDoubts === 'object') ? parsed.quizDoubts : {};
+            appData.fcMastered = (parsed.fcMastered && typeof parsed.fcMastered === 'object') ? parsed.fcMastered : {};
+            appData.essayNotes = (parsed.essayNotes && typeof parsed.essayNotes === 'object') ? parsed.essayNotes : {};
+            return true;
+        }
+
+        function openIDB() {
+            return new Promise((resolve) => {
+                try {
+                    if (!window.indexedDB) {
+                        resolve(null);
+                        return;
+                    }
+                    const req = window.indexedDB.open(IDB_NAME, 1);
+                    req.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains(IDB_STORE)) {
+                            db.createObjectStore(IDB_STORE);
+                        }
+                    };
+                    req.onsuccess = (e) => resolve(e.target.result);
+                    req.onerror = () => resolve(null);
+                } catch (err) {
+                    resolve(null);
+                }
+            });
+        }
+
+        async function readFromIDB() {
+            try {
+                const db = await openIDB();
+                if (!db) return null;
+                return await new Promise((resolve) => {
+                    const tx = db.transaction(IDB_STORE, 'readonly');
+                    const store = tx.objectStore(IDB_STORE);
+                    const req = store.get(IDB_KEY);
+                    req.onsuccess = () => resolve(req.result || null);
+                    req.onerror = () => resolve(null);
+                });
+            } catch (err) {
+                return null;
+            }
+        }
+
+        async function writeToIDB(serialized) {
+            try {
+                const db = await openIDB();
+                if (!db) return false;
+                return await new Promise((resolve) => {
+                    const tx = db.transaction(IDB_STORE, 'readwrite');
+                    const store = tx.objectStore(IDB_STORE);
+                    const req = store.put(serialized, IDB_KEY);
+                    req.onsuccess = () => resolve(true);
+                    req.onerror = () => resolve(false);
+                });
+            } catch (err) {
+                return false;
+            }
+        }
+
+        async function clearIDB() {
+            try {
+                const db = await openIDB();
+                if (!db) return;
+                await new Promise((resolve) => {
+                    const tx = db.transaction(IDB_STORE, 'readwrite');
+                    const store = tx.objectStore(IDB_STORE);
+                    const req = store.delete(IDB_KEY);
+                    req.onsuccess = () => resolve(true);
+                    req.onerror = () => resolve(false);
+                });
+            } catch (err) {}
+        }
+
+        function scoreSnapshot(parsed) {
+            if (!parsed || typeof parsed !== 'object') return -1;
+            const qLen = Array.isArray(parsed.quizzes) ? parsed.quizzes.length : 0;
+            const cLen = Array.isArray(parsed.courses) ? parsed.courses.length : 0;
+            const ansLen = parsed.quizAnswers ? Object.keys(parsed.quizAnswers).length : 0;
+            const tsScore = Number(parsed.updatedAt) ? Math.floor(Number(parsed.updatedAt) / 1000) : 0;
+            return (qLen * 100000) + (cLen * 50000) + (ansLen * 1000) + (tsScore % 1000);
+        }
+
+        async function loadDataAsync() {
+            resetDataToDefaultObject();
+            const candidates = [];
+
+            try {
+                if (typeof window.name === 'string' && window.name.startsWith(WINDOW_NAME_PREFIX)) {
+                    const pWin = JSON.parse(window.name.slice(WINDOW_NAME_PREFIX.length));
+                    candidates.push({ raw: JSON.stringify(pWin), parsed: pWin, source: 'Window' });
+                }
+            } catch (e) {}
+
+            try {
+                const rawLocal = window.localStorage ? window.localStorage.getItem(STORAGE_KEY) : null;
+                if (rawLocal) {
+                    candidates.push({ raw: rawLocal, parsed: JSON.parse(rawLocal), source: 'LocalStorage' });
+                }
+            } catch (e) {}
+
+            try {
+                const rawSession = window.sessionStorage ? window.sessionStorage.getItem(STORAGE_KEY) : null;
+                if (rawSession) {
+                    candidates.push({ raw: rawSession, parsed: JSON.parse(rawSession), source: 'SessionStorage' });
+                }
+            } catch (e) {}
+
+            try {
+                const rawIDB = await readFromIDB();
+                if (rawIDB) {
+                    candidates.push({ raw: rawIDB, parsed: JSON.parse(rawIDB), source: 'IndexedDB' });
+                }
+            } catch (e) {}
+
+            if (memorySnapshotJSON) {
+                try {
+                    candidates.push({ raw: memorySnapshotJSON, parsed: JSON.parse(memorySnapshotJSON), source: 'Memori' });
+                } catch (e) {}
+            }
+
+            if (candidates.length > 0) {
+                candidates.sort((a, b) => scoreSnapshot(b.parsed) - scoreSnapshot(a.parsed));
+                const best = candidates[0];
+                if (hydrateFromParsedObject(best.parsed)) {
+                    memorySnapshotJSON = best.raw;
+                    lastStorageBackend = best.source;
+                }
+            }
+
+            const pill = document.getElementById('storage-status-pill');
+            if (pill) pill.textContent = `Auto-Save (${lastStorageBackend})`;
+        }
+
+        function saveData() {
+            try {
+                if (activeQuizList && activeQuizList.length > 0 && activeQuizList[currentQuizIndex]) {
+                    appData.lastQuizId = activeQuizList[currentQuizIndex].id;
+                }
+                appData.updatedAt = Date.now();
+                const serialized = JSON.stringify(appData);
+                memorySnapshotJSON = serialized;
+                let savedAny = false;
+
+                try {
+                    if (typeof window.name === 'string') {
+                        window.name = WINDOW_NAME_PREFIX + serialized;
+                        savedAny = true;
+                    }
+                } catch (e) {}
+
+                try {
+                    if (window.localStorage) {
+                        window.localStorage.setItem(STORAGE_KEY, serialized);
+                        savedAny = true;
+                    }
+                } catch (e) {}
+
+                try {
+                    if (window.sessionStorage) {
+                        window.sessionStorage.setItem(STORAGE_KEY, serialized);
+                        savedAny = true;
+                    }
+                } catch (e) {}
+
+                writeToIDB(serialized).then((ok) => {
+                    if (ok) {
+                        const pill = document.getElementById('storage-status-pill');
+                        if (pill) pill.textContent = 'Auto-Save Aktif';
+                    }
+                });
+
+                const pill = document.getElementById('storage-status-pill');
+                if (pill) {
+                    pill.textContent = savedAny ? 'Auto-Save Aktif' : 'Auto-Save Memori';
+                }
+            } catch (err) {
+                console.warn('Gagal menyusun snapshot data:', err);
+            }
+            updateTopAndCourseStats();
+        }
+
+        window.addEventListener('beforeunload', () => {
+            try { saveData(); } catch (e) {}
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                try { saveData(); } catch (e) {}
+            }
+        });
+
+        function pinNavBarToBottom() {
+            const navBar = document.getElementById('quiz-nav-bar');
+            if (!navBar) return;
+            if (!document.body.classList.contains('quiz-active')) {
+                navBar.style.display = 'none';
+                return;
+            }
+            navBar.style.display = 'block';
+            navBar.style.position = 'fixed';
+            navBar.style.top = 'auto';
+            navBar.style.bottom = '0px';
+            navBar.style.left = '0px';
+            navBar.style.right = '0px';
+            navBar.style.width = '100%';
+            navBar.style.zIndex = '2147483647';
+        }
+
+        window.addEventListener('scroll', pinNavBarToBottom, { passive: true });
+        window.addEventListener('resize', pinNavBarToBottom, { passive: true });
+
+        function escapeHTML(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function showToast(message, type = 'success') {
+            try {
+                const container = document.getElementById('toast-container');
+                if (!container) return;
+                const el = document.createElement('div');
+                const colorMap = {
+                    success: 'bg-emerald-600 text-white border-emerald-500',
+                    error: 'bg-rose-600 text-white border-rose-500',
+                    info: 'bg-slate-900 text-white border-slate-700'
+                };
+                const iconMap = {
+                    success: 'fa-circle-check',
+                    error: 'fa-circle-exclamation',
+                    info: 'fa-circle-info'
+                };
+                el.className = `pointer-events-auto px-4 py-3 rounded-xl shadow-lg border text-xs sm:text-sm font-semibold flex items-center gap-2.5 transition-all duration-300 ${colorMap[type] || colorMap.info}`;
+                el.innerHTML = `<i class="fas ${iconMap[type] || iconMap.info} shrink-0"></i><span>${escapeHTML(message)}</span>`;
+                container.appendChild(el);
+                setTimeout(() => {
+                    el.style.opacity = '0';
+                    setTimeout(() => el.remove(), 300);
+                }, 3800);
+            } catch (e) {
+                console.log('Toast:', message);
+            }
+        }
+
+        function applyDarkMode() {
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            if (appData.darkMode) {
+                html.classList.add('dark');
+                if (icon) icon.className = 'fas fa-sun text-amber-400 text-sm';
+            } else {
+                html.classList.remove('dark');
+                if (icon) icon.className = 'fas fa-moon text-sm';
+            }
+        }
+
+        function toggleDarkMode() {
+            appData.darkMode = !appData.darkMode;
+            applyDarkMode();
+            saveData();
+        }
+
+        function renderCourseFilters() {
+            const container = document.getElementById('course-filter-container');
+            if (!container) return;
+
+            if (appData.selectedCourse !== 'ALL' && !appData.courses.some(c => c.id === appData.selectedCourse)) {
+                appData.selectedCourse = 'ALL';
+            }
+
+            let html = `
+                <button onclick="selectCourseFilter('ALL')" class="px-3.5 py-2 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 border ${
+                    appData.selectedCourse === 'ALL'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-indigo-400'
+                }">
+                    <i class="fas fa-border-all"></i>
+                    <span>Semua Matkul (${appData.quizzes.length})</span>
+                </button>
+            `;
+
+            appData.courses.forEach(course => {
+                const count = appData.quizzes.filter(q => q.course === course.id).length;
+                const isSelected = appData.selectedCourse === course.id;
+                html += `
+                    <button onclick="selectCourseFilter('${escapeHTML(course.id)}')" class="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border ${
+                        isSelected
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-indigo-400'
+                    }">
+                        <span class="font-mono font-extrabold">${escapeHTML(course.code)}</span>
+                        <span class="hidden sm:inline opacity-85">• ${escapeHTML(course.short)}</span>
+                        <span class="px-1.5 py-0.2 rounded-md text-[10px] ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700'}">${count}</span>
+                    </button>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function selectCourseFilter(courseId) {
+            appData.selectedCourse = courseId;
+            appData.lastQuizId = null;
+            saveData();
+            renderCourseFilters();
+            prepareQuizList(false);
+            prepareFlashcardList();
+            renderEssayCases();
+        }
+
+        function updateTopAndCourseStats() {
+            const filteredQuizzes = appData.selectedCourse === 'ALL'
+                ? appData.quizzes
+                : appData.quizzes.filter(q => q.course === appData.selectedCourse);
+
+            const filteredFC = appData.selectedCourse === 'ALL'
+                ? appData.flashcards
+                : appData.flashcards.filter(f => f.course === appData.selectedCourse);
+
+            const filteredEssays = appData.selectedCourse === 'ALL'
+                ? appData.essays
+                : appData.essays.filter(e => e.course === appData.selectedCourse);
+
+            let answeredCount = 0;
+            let correctCount = 0;
+            let wrongCount = 0;
+
+            filteredQuizzes.forEach(q => {
+                if (appData.quizAnswers[q.id] !== undefined) {
+                    answeredCount++;
+                    if (appData.quizAnswers[q.id] === q.correctIndex) {
+                        correctCount++;
+                    } else {
+                        wrongCount++;
+                    }
+                }
+            });
+
+            const pct = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0;
+            const scoreBadge = document.getElementById('header-score-badge');
+            if (scoreBadge) scoreBadge.textContent = `${correctCount} Benar (${pct}%)`;
+
+            const summaryEl = document.getElementById('course-bank-summary');
+            if (summaryEl) {
+                summaryEl.textContent = `Tersedia: ${filteredQuizzes.length} Soal PG • ${filteredFC.length} Flashcard • ${filteredEssays.length} Studi Kasus`;
+            }
+
+            const bQuiz = document.getElementById('badge-count-quiz');
+            const bFc = document.getElementById('badge-count-fc');
+            const bEssay = document.getElementById('badge-count-essay');
+            const allLabel = document.getElementById('btn-all-questions-label');
+            const wrongLabel = document.getElementById('wrong-count-label');
+
+            if (bQuiz) bQuiz.textContent = filteredQuizzes.length;
+            if (bFc) bFc.textContent = filteredFC.length;
+            if (bEssay) bEssay.textContent = filteredEssays.length;
+            if (allLabel) allLabel.textContent = `Ambil Semua Soal (${filteredQuizzes.length})`;
+            if (wrongLabel) wrongLabel.textContent = wrongCount;
+        }
+
+        function switchMode(mode) {
+            appData.activeMode = mode;
+            if (mode === 'quiz') {
+                document.body.classList.add('quiz-active');
+            } else {
+                document.body.classList.remove('quiz-active');
+            }
+            const modes = ['quiz', 'flashcard', 'essay', 'manage'];
+            modes.forEach(m => {
+                const view = document.getElementById(`view-${m}`);
+                const btn = document.getElementById(`tab-btn-${m}`);
+                if (view) {
+                    if (m === mode) view.classList.remove('hidden');
+                    else view.classList.add('hidden');
+                }
+                if (btn) {
+                    if (m === mode) {
+                        btn.className = 'mode-tab-btn py-2.5 px-3 rounded-xl font-heading font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs';
+                    } else {
+                        btn.className = 'mode-tab-btn py-2.5 px-3 rounded-xl font-heading font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-800/60';
+                    }
+                }
+            });
+            pinNavBarToBottom();
+            saveData();
+        }
+
+        function setQuizLimit(limit) {
+            appData.quizLimit = limit;
+            saveData();
+            prepareQuizList(false);
+            showToast(limit === 'ALL' ? `Menampilkan seluruh ${activeQuizList.length} soal!` : `Mode latihan ${limit} soal aktif.`, 'info');
+        }
+
+        function updateLimitButtonStyles() {
+            ['10', '20', '30', 'ALL'].forEach(key => {
+                const btn = document.getElementById(`limit-btn-${key}`);
+                if (!btn) return;
+                const isSelected = String(appData.quizLimit) === key;
+                if (key === 'ALL') {
+                    btn.className = isSelected
+                        ? 'limit-btn px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-amber-400 text-slate-950 ring-2 ring-amber-500 shadow-xs transition flex items-center gap-1.5'
+                        : 'limit-btn px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-amber-400/80 hover:bg-amber-400 text-slate-950 transition flex items-center gap-1.5';
+                } else {
+                    btn.className = isSelected
+                        ? 'limit-btn px-3 py-1.5 rounded-xl text-xs font-extrabold bg-indigo-600 text-white border border-indigo-600 shadow-xs transition'
+                        : 'limit-btn px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-indigo-400 transition';
+                }
+            });
+        }
+
+        function prepareQuizList(shuffle) {
+            let pool = appData.selectedCourse === 'ALL'
+                ? [...appData.quizzes]
+                : appData.quizzes.filter(q => q.course === appData.selectedCourse);
+
+            if (shuffle) {
+                for (let i = pool.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [pool[i], pool[j]] = [pool[j], pool[i]];
+                }
+                showToast('Urutan soal berhasil diacak!', 'info');
+            }
+
+            if (appData.quizLimit !== 'ALL') {
+                const numLimit = Number(appData.quizLimit) || 10;
+                pool = pool.slice(0, numLimit);
+            }
+
+            activeQuizList = pool;
+
+            if (!shuffle && appData.lastQuizId) {
+                const savedIdx = activeQuizList.findIndex(q => q.id === appData.lastQuizId);
+                currentQuizIndex = savedIdx >= 0 ? savedIdx : 0;
+            } else {
+                currentQuizIndex = 0;
+            }
+
+            updateLimitButtonStyles();
+            renderQuizQuestion();
+            renderQuizNumberGrid();
+            pinNavBarToBottom();
+        }
+
+        function retryWrongQuestions() {
+            const pool = appData.selectedCourse === 'ALL'
+                ? appData.quizzes
+                : appData.quizzes.filter(q => q.course === appData.selectedCourse);
+
+            const wrongOnes = pool.filter(q => appData.quizAnswers[q.id] !== undefined && appData.quizAnswers[q.id] !== q.correctIndex);
+
+            if (wrongOnes.length === 0) {
+                showToast('Tidak ada soal salah pada mata kuliah yang dipilih!', 'info');
+                return;
+            }
+
+            wrongOnes.forEach(q => {
+                delete appData.quizAnswers[q.id];
+            });
+            appData.lastQuizId = wrongOnes[0].id;
+            saveData();
+
+            activeQuizList = wrongOnes;
+            currentQuizIndex = 0;
+            renderQuizQuestion();
+            renderQuizNumberGrid();
+            showToast(`Memuat ${wrongOnes.length} soal yang sebelumnya salah untuk diulang!`, 'info');
+        }
+
+        function renderQuizQuestion() {
+            const qTextEl = document.getElementById('quiz-question-text');
+            const optContainer = document.getElementById('quiz-options-container');
+            const expBox = document.getElementById('quiz-explanation-box');
+            const expText = document.getElementById('quiz-explanation-text');
+            const numBadge = document.getElementById('quiz-number-badge');
+            const courseTag = document.getElementById('quiz-course-tag');
+            const topicTag = document.getElementById('quiz-topic-tag');
+            const progressText = document.getElementById('quiz-progress-text');
+            const doubtBtn = document.getElementById('btn-doubt-toggle');
+            const prevBtn = document.getElementById('btn-prev-quiz');
+            const nextBtn = document.getElementById('btn-next-quiz');
+
+            if (!activeQuizList || activeQuizList.length === 0) {
+                if (qTextEl) qTextEl.textContent = 'Belum ada soal tersedia. Silakan import JSON, tambah soal manual, atau unggah file PDF kisi-kisi pada tab Kelola Matkul & PDF.';
+                if (optContainer) optContainer.innerHTML = '';
+                if (expBox) expBox.classList.add('hidden');
+                if (numBadge) numBadge.textContent = 'Soal 0 / 0';
+                if (courseTag) courseTag.textContent = '-';
+                if (topicTag) topicTag.textContent = 'Topik Modul';
+                if (progressText) progressText.textContent = 'Terjawab: 0 / 0';
+                if (prevBtn) prevBtn.disabled = true;
+                if (nextBtn) nextBtn.disabled = true;
+                return;
+            }
+
+            if (currentQuizIndex < 0) currentQuizIndex = 0;
+            if (currentQuizIndex >= activeQuizList.length) currentQuizIndex = activeQuizList.length - 1;
+
+            const q = activeQuizList[currentQuizIndex];
+            const userAnswer = appData.quizAnswers[q.id];
+            const isAnswered = userAnswer !== undefined;
+            const isDoubt = Boolean(appData.quizDoubts[q.id]);
+
+            if (numBadge) numBadge.textContent = `Soal ${currentQuizIndex + 1} / ${activeQuizList.length}`;
+            if (courseTag) courseTag.textContent = q.course;
+            if (topicTag) topicTag.textContent = q.topic || 'Kisi-Kisi Utama';
+            if (qTextEl) qTextEl.textContent = q.question;
+
+            if (doubtBtn) {
+                doubtBtn.className = isDoubt
+                    ? 'px-2.5 py-1 rounded-lg bg-amber-400 text-slate-950 text-xs font-extrabold transition'
+                    : 'px-2.5 py-1 rounded-lg border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 text-xs font-bold hover:bg-amber-50 dark:hover:bg-amber-950/50 transition';
+            }
+
+            const letters = ['A', 'B', 'C', 'D'];
+            let optionsHTML = '';
+
+            q.options.forEach((opt, idx) => {
+                let btnStyle = 'border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/50 hover:border-indigo-400 hover:bg-indigo-50/40 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100';
+                let badgeStyle = 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600';
+                let statusIcon = '';
+
+                if (isAnswered) {
+                    if (idx === q.correctIndex) {
+                        btnStyle = 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-950 dark:text-emerald-100 ring-1 ring-emerald-500';
+                        badgeStyle = 'bg-emerald-600 text-white border-emerald-600';
+                        statusIcon = '<i class="fas fa-circle-check text-emerald-600 dark:text-emerald-400 text-base ml-auto shrink-0"></i>';
+                    } else if (idx === userAnswer) {
+                        btnStyle = 'border-rose-500 bg-rose-50 dark:bg-rose-950/50 text-rose-950 dark:text-rose-100 ring-1 ring-rose-500';
+                        badgeStyle = 'bg-rose-600 text-white border-rose-600';
+                        statusIcon = '<i class="fas fa-circle-xmark text-rose-600 dark:text-rose-400 text-base ml-auto shrink-0"></i>';
+                    } else {
+                        btnStyle = 'border-slate-200 dark:border-slate-800 opacity-60 text-slate-600 dark:text-slate-400';
+                    }
+                }
+
+                optionsHTML += `
+                    <button type="button" onclick="selectQuizOption(${idx})" class="w-full text-left p-3.5 sm:p-4 rounded-xl border-2 transition flex items-start gap-3 ${btnStyle}">
+                        <span class="w-7 h-7 rounded-lg flex items-center justify-center font-heading font-extrabold text-xs shrink-0 mt-0.5 ${badgeStyle}">
+                            ${letters[idx] || idx + 1}
+                        </span>
+                        <span class="text-xs sm:text-sm font-medium leading-relaxed">${escapeHTML(opt)}</span>
+                        ${statusIcon}
+                    </button>
+                `;
+            });
+
+            if (optContainer) optContainer.innerHTML = optionsHTML;
+
+            if (isAnswered) {
+                if (expBox) expBox.classList.remove('hidden');
+                if (expText) expText.textContent = q.explanation || 'Jawaban benar sesuai konsep modul.';
+            } else {
+                if (expBox) expBox.classList.add('hidden');
+            }
+
+            const answeredInSession = activeQuizList.filter(item => appData.quizAnswers[item.id] !== undefined).length;
+            if (progressText) progressText.textContent = `Terjawab: ${answeredInSession} / ${activeQuizList.length}`;
+
+            if (prevBtn) prevBtn.disabled = currentQuizIndex <= 0;
+            if (nextBtn) nextBtn.disabled = currentQuizIndex >= activeQuizList.length - 1;
+        }
+
+        function selectQuizOption(optionIndex) {
+            if (!activeQuizList || activeQuizList.length === 0) return;
+            const q = activeQuizList[currentQuizIndex];
+            appData.quizAnswers[q.id] = optionIndex;
+            appData.lastQuizId = q.id;
+            saveData();
+            renderQuizQuestion();
+            renderQuizNumberGrid();
+        }
+
+        function toggleDoubtCurrent() {
+            if (!activeQuizList || activeQuizList.length === 0) return;
+            const q = activeQuizList[currentQuizIndex];
+            appData.quizDoubts[q.id] = !appData.quizDoubts[q.id];
+            appData.lastQuizId = q.id;
+            saveData();
+            renderQuizQuestion();
+            renderQuizNumberGrid();
+        }
+
+        function navigateQuiz(delta) {
+            if (!activeQuizList || activeQuizList.length === 0) return;
+            const nextIdx = currentQuizIndex + delta;
+            if (nextIdx >= 0 && nextIdx < activeQuizList.length) {
+                currentQuizIndex = nextIdx;
+                appData.lastQuizId = activeQuizList[currentQuizIndex].id;
+                saveData();
+                renderQuizQuestion();
+                renderQuizNumberGrid();
+            }
+        }
+
+        function jumpToQuiz(index) {
+            if (index >= 0 && index < activeQuizList.length) {
+                currentQuizIndex = index;
+                appData.lastQuizId = activeQuizList[currentQuizIndex].id;
+                saveData();
+                renderQuizQuestion();
+                renderQuizNumberGrid();
+            }
+        }
+
+        function renderQuizNumberGrid() {
+            const grid = document.getElementById('quiz-number-grid');
+            const totalLabel = document.getElementById('map-total-label');
+            if (!grid) return;
+
+            if (totalLabel) totalLabel.textContent = `${activeQuizList.length} Nomor`;
+
+            let html = '';
+            activeQuizList.forEach((q, idx) => {
+                const isCurrent = idx === currentQuizIndex;
+                const ans = appData.quizAnswers[q.id];
+                const isDoubt = Boolean(appData.quizDoubts[q.id]);
+
+                let cellClass = 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+
+                if (ans !== undefined) {
+                    if (ans === q.correctIndex) {
+                        cellClass = 'bg-emerald-500 text-white border-emerald-600';
+                    } else {
+                        cellClass = 'bg-rose-500 text-white border-rose-600';
+                    }
+                } else if (isDoubt) {
+                    cellClass = 'bg-amber-400 text-slate-950 border-amber-500';
+                }
+
+                if (isCurrent) {
+                    cellClass += ' ring-2 ring-indigo-600 ring-offset-1 dark:ring-offset-slate-900 font-extrabold';
+                }
+
+                html += `
+                    <button type="button" onclick="jumpToQuiz(${idx})" class="h-8 rounded-lg border text-xs font-bold transition flex items-center justify-center ${cellClass}">
+                        ${idx + 1}
+                    </button>
+                `;
+            });
+
+            grid.innerHTML = html;
+        }
+
+        function prepareFlashcardList() {
+            const unmasteredOnly = document.getElementById('fc-unmastered-only')?.checked || false;
+            let pool = appData.selectedCourse === 'ALL'
+                ? [...appData.flashcards]
+                : appData.flashcards.filter(f => f.course === appData.selectedCourse);
+
+            const masteredCount = pool.filter(f => appData.fcMastered[f.id]).length;
+            const statsEl = document.getElementById('fc-mastered-stats');
+            if (statsEl) statsEl.textContent = `Sudah Hafal: ${masteredCount} / ${pool.length} kartu`;
+
+            if (unmasteredOnly) {
+                pool = pool.filter(f => !appData.fcMastered[f.id]);
+            }
+
+            activeFCList = pool;
+            currentFCIndex = 0;
+            isFCFlipped = false;
+            renderFlashcard();
+        }
+
+        function shuffleFlashcards() {
+            for (let i = activeFCList.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [activeFCList[i], activeFCList[j]] = [activeFCList[j], activeFCList[i]];
+            }
+            currentFCIndex = 0;
+            isFCFlipped = false;
+            renderFlashcard();
+            showToast('Urutan kartu flashcard diacak!', 'info');
+        }
+
+        function renderFlashcard() {
+            const inner = document.getElementById('fc-card-inner');
+            const counterBadge = document.getElementById('fc-counter-badge');
+            const frontCourse = document.getElementById('fc-front-course');
+            const frontText = document.getElementById('fc-front-text');
+            const backText = document.getElementById('fc-back-text');
+            const noteBox = document.getElementById('fc-note-box');
+            const statusPill = document.getElementById('fc-status-pill');
+
+            if (inner) {
+                if (isFCFlipped) inner.classList.add('rotate-y-180');
+                else inner.classList.remove('rotate-y-180');
+            }
+
+            if (!activeFCList || activeFCList.length === 0) {
+                if (counterBadge) counterBadge.textContent = 'Kartu 0 / 0';
+                if (frontCourse) frontCourse.textContent = 'FLASHCARD';
+                if (frontText) frontText.textContent = 'Belum ada flashcard tersedia. Tambahkan di tab Kelola Matkul & PDF.';
+                if (backText) backText.textContent = 'Penjelasan konsep akan tampil di sini setelah flashcard ditambahkan.';
+                if (noteBox) noteBox.classList.add('hidden');
+                if (statusPill) {
+                    statusPill.textContent = 'Status: Kosong';
+                    statusPill.className = 'font-bold text-slate-400';
+                }
+                return;
+            }
+
+            const card = activeFCList[currentFCIndex];
+            const isMastered = Boolean(appData.fcMastered[card.id]);
+
+            if (counterBadge) counterBadge.textContent = `Kartu ${currentFCIndex + 1} / ${activeFCList.length}`;
+            if (frontCourse) frontCourse.textContent = `${card.course} • ${card.courseName || ''}`;
+            if (frontText) frontText.textContent = card.front;
+            if (backText) backText.textContent = card.back;
+            if (noteBox) {
+                if (card.note) {
+                    noteBox.classList.remove('hidden');
+                    noteBox.textContent = `Catatan Kisi-Kisi: ${card.note}`;
+                } else {
+                    noteBox.classList.add('hidden');
+                }
+            }
+            if (statusPill) {
+                statusPill.textContent = isMastered ? 'Status: Sudah Hafal ✓' : 'Status: Perlu Diulang';
+                statusPill.className = isMastered ? 'font-bold text-emerald-600' : 'font-bold text-amber-600';
+            }
+        }
+
+        function flipFlashcard() {
+            if (!activeFCList || activeFCList.length === 0) return;
+            isFCFlipped = !isFCFlipped;
+            renderFlashcard();
+        }
+
+        function navigateFlashcard(delta) {
+            if (!activeFCList || activeFCList.length === 0) return;
+            currentFCIndex = (currentFCIndex + delta + activeFCList.length) % activeFCList.length;
+            isFCFlipped = false;
+            renderFlashcard();
+        }
+
+        function markFlashcardMastered(status) {
+            if (!activeFCList || activeFCList.length === 0) return;
+            const card = activeFCList[currentFCIndex];
+            appData.fcMastered[card.id] = status;
+            saveData();
+            showToast(status ? 'Kartu ditandai Sudah Hafal!' : 'Kartu ditandai Perlu Diulang.', status ? 'success' : 'info');
+            navigateFlashcard(1);
+            prepareFlashcardList();
+        }
+
+        function renderEssayCases() {
+            const container = document.getElementById('essay-cases-container');
+            if (!container) return;
+
+            const filtered = appData.selectedCourse === 'ALL'
+                ? appData.essays
+                : appData.essays.filter(e => e.course === appData.selectedCourse);
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 text-center text-sm text-slate-500">
+                        Belum ada studi kasus uraian tersedia. Anda dapat menambahkannya di tab <strong>Kelola Matkul &amp; PDF</strong>.
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            filtered.forEach((item, idx) => {
+                const savedNote = appData.essayNotes[item.id] || '';
+                let stepsHTML = '';
+                (item.solutionSteps || []).forEach(st => {
+                    stepsHTML += `
+                        <div class="p-3.5 rounded-xl bg-slate-900 text-slate-100 space-y-1.5">
+                            <div class="text-xs font-extrabold text-amber-400">${escapeHTML(st.step)}</div>
+                            <pre class="text-xs font-mono whitespace-pre-wrap leading-relaxed text-slate-200">${escapeHTML(st.detail)}</pre>
+                        </div>
+                    `;
+                });
+
+                html += `
+                    <article class="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-800 space-y-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                            <span class="px-3 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono font-bold text-xs">
+                                ${escapeHTML(item.code || item.course)}
+                            </span>
+                            <span class="text-xs font-bold text-slate-400">Studi Kasus #${idx + 1}</span>
+                        </div>
+
+                        <h3 class="font-heading font-extrabold text-base sm:text-lg text-slate-900 dark:text-white">
+                            ${escapeHTML(item.title)}
+                        </h3>
+
+                        <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                            <pre class="text-xs sm:text-sm font-sans whitespace-pre-wrap leading-relaxed text-slate-800 dark:text-slate-200">${escapeHTML(item.scenario)}</pre>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center justify-between">
+                                <span><i class="fas fa-pen-to-square text-indigo-500 mr-1"></i> Kertas Kerja Jawaban Anda (Otomatis Tersimpan):</span>
+                                <span class="text-[11px] text-emerald-600 font-semibold">Auto-save aktif</span>
+                            </label>
+                            <textarea rows="4" oninput="saveEssayNote('${escapeHTML(item.id)}', this.value)" placeholder="Ketik draf jurnal, perhitungan, atau analisis jawaban Anda di sini sebelum membuka kunci pembahasan..." class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 p-3 text-xs sm:text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500">${escapeHTML(savedNote)}</textarea>
+                        </div>
+
+                        <div class="pt-1">
+                            <button onclick="toggleEssaySolution('${escapeHTML(item.id)}')" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition flex items-center gap-2">
+                                <i class="fas fa-key text-amber-300"></i>
+                                <span id="btn-sol-label-${escapeHTML(item.id)}">Tampilkan Kunci &amp; Langkah Penyelesaian</span>
+                            </button>
+                        </div>
+
+                        <div id="essay-sol-${escapeHTML(item.id)}" class="hidden space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                            ${stepsHTML}
+                        </div>
+                    </article>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function saveEssayNote(caseId, value) {
+            appData.essayNotes[caseId] = value;
+            saveData();
+        }
+
+        function toggleEssaySolution(caseId) {
+            const box = document.getElementById(`essay-sol-${caseId}`);
+            const label = document.getElementById(`btn-sol-label-${caseId}`);
+            if (!box) return;
+            const isHidden = box.classList.contains('hidden');
+            if (isHidden) {
+                box.classList.remove('hidden');
+                if (label) label.textContent = 'Sembunyikan Kunci Penyelesaian';
+            } else {
+                box.classList.add('hidden');
+                if (label) label.textContent = 'Tampilkan Kunci & Langkah Penyelesaian';
+            }
+        }
+
+        function renderManageView() {
+            const listEl = document.getElementById('manage-courses-list');
+            const countBadge = document.getElementById('manage-course-count');
+            const dropdowns = document.querySelectorAll('.course-select-dropdown');
+
+            if (countBadge) countBadge.textContent = `${appData.courses.length} Matkul`;
+
+            let optionsHTML = '';
+            if (appData.courses.length === 0) {
+                optionsHTML = `<option value="">-- Tambah Mata Kuliah Terlebih Dahulu --</option>`;
+            } else {
+                appData.courses.forEach(c => {
+                    optionsHTML += `<option value="${escapeHTML(c.id)}">${escapeHTML(c.code)} — ${escapeHTML(c.name)}</option>`;
+                });
+            }
+            dropdowns.forEach(sel => {
+                sel.innerHTML = optionsHTML;
+            });
+
+            if (!listEl) return;
+            if (appData.courses.length === 0) {
+                listEl.innerHTML = `
+                    <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-500">
+                        Belum ada mata kuliah aktif. Tambahkan di atas atau import JSON / PDF.
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            appData.courses.forEach(c => {
+                const qCount = appData.quizzes.filter(q => q.course === c.id).length;
+                const fcCount = appData.flashcards.filter(f => f.course === c.id).length;
+                html += `
+                    <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="font-mono font-extrabold text-xs text-indigo-600 dark:text-indigo-400">${escapeHTML(c.code)}</span>
+                                <span class="text-[11px] px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 font-semibold">${qCount} PG • ${fcCount} Kartu</span>
+                            </div>
+                            <div class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 truncate mt-0.5">
+                                ${escapeHTML(c.name)}
+                            </div>
+                        </div>
+                        <button onclick="deleteCourse('${escapeHTML(c.id)}')" title="Hapus Mata Kuliah" class="p-2 rounded-lg text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-950 transition shrink-0">
+                            <i class="fas fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                `;
+            });
+            listEl.innerHTML = html;
+        }
+
+        function handleAddCourse(e) {
+            e.preventDefault();
+            const code = document.getElementById('new-course-code').value.trim().toUpperCase();
+            const name = document.getElementById('new-course-name').value.trim();
+            const short = document.getElementById('new-course-short').value.trim();
+            if (!code || !name) return;
+
+            if (appData.courses.some(c => c.id === code)) {
+                showToast(`Kode matkul ${code} sudah ada!`, 'error');
+                return;
+            }
+
+            appData.courses.push({ id: code, code, name, short: short || name });
+            saveData();
+            renderCourseFilters();
+            renderManageView();
+            e.target.reset();
+            showToast(`Mata kuliah ${code} berhasil ditambahkan!`);
+        }
+
+        function deleteCourse(courseId) {
+            appData.courses = appData.courses.filter(c => c.id !== courseId);
+            appData.quizzes = appData.quizzes.filter(q => q.course !== courseId);
+            appData.flashcards = appData.flashcards.filter(f => f.course !== courseId);
+            appData.essays = appData.essays.filter(es => es.course !== courseId);
+
+            if (appData.selectedCourse === courseId) appData.selectedCourse = 'ALL';
+            saveData();
+            renderCourseFilters();
+            renderManageView();
+            prepareQuizList(false);
+            prepareFlashcardList();
+            renderEssayCases();
+            showToast(`Mata kuliah ${courseId} dan bank soalnya telah dihapus.`, 'info');
+        }
+
+        function switchManualFormType(type) {
+            ['pg', 'fc', 'essay'].forEach(t => {
+                const form = document.getElementById(`manual-form-${t}`);
+                const tab = document.getElementById(`mform-tab-${t}`);
+                if (form) {
+                    if (t === type) form.classList.remove('hidden');
+                    else form.classList.add('hidden');
+                }
+                if (tab) {
+                    tab.className = t === type
+                        ? 'px-3 py-1 rounded-lg text-xs font-bold bg-white dark:bg-slate-700 text-indigo-700 dark:text-white shadow-xs'
+                        : 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300';
+                }
+            });
+        }
+
+        function handleAddManualPG(e) {
+            e.preventDefault();
+            const course = document.getElementById('mpg-course').value;
+            if (!course) {
+                showToast('Tambahkan mata kuliah terlebih dahulu!', 'error');
+                return;
+            }
+            const topic = document.getElementById('mpg-topic').value.trim();
+            const question = document.getElementById('mpg-question').value.trim();
+            const options = [
+                document.getElementById('mpg-opt-0').value.trim(),
+                document.getElementById('mpg-opt-1').value.trim(),
+                document.getElementById('mpg-opt-2').value.trim(),
+                document.getElementById('mpg-opt-3').value.trim()
+            ];
+            const correctIndex = Number(document.getElementById('mpg-correct').value) || 0;
+            const explanation = document.getElementById('mpg-explanation').value.trim();
+
+            appData.quizzes.push({
+                id: `manual-pg-${Date.now()}`,
+                course,
+                topic,
+                question,
+                options,
+                correctIndex,
+                explanation
+            });
+
+            saveData();
+            renderCourseFilters();
+            renderManageView();
+            prepareQuizList(false);
+            e.target.reset();
+            showToast('Soal Pilihan Ganda berhasil ditambahkan ke bank soal!');
+        }
+
+        function handleAddManualFC(e) {
+            e.preventDefault();
+            const course = document.getElementById('mfc-course').value;
+            if (!course) {
+                showToast('Tambahkan mata kuliah terlebih dahulu!', 'error');
+                return;
+            }
+            const courseObj = appData.courses.find(c => c.id === course);
+            const front = document.getElementById('mfc-front').value.trim();
+            const back = document.getElementById('mfc-back').value.trim();
+            const note = document.getElementById('mfc-note').value.trim();
+
+            appData.flashcards.push({
+                id: `manual-fc-${Date.now()}`,
+                course,
+                courseName: courseObj ? courseObj.short : course,
+                front,
+                back,
+                note
+            });
+
+            saveData();
+            renderManageView();
+            prepareFlashcardList();
+            e.target.reset();
+            showToast('Flashcard baru berhasil ditambahkan!');
+        }
+
+        function handleAddManualEssay(e) {
+            e.preventDefault();
+            const course = document.getElementById('messay-course').value;
+            if (!course) {
+                showToast('Tambahkan mata kuliah terlebih dahulu!', 'error');
+                return;
+            }
+            const courseObj = appData.courses.find(c => c.id === course);
+            const title = document.getElementById('messay-title').value.trim();
+            const scenario = document.getElementById('messay-scenario').value.trim();
+            const solution = document.getElementById('messay-solution').value.trim();
+
+            appData.essays.push({
+                id: `manual-es-${Date.now()}`,
+                course,
+                code: `${course} • ${courseObj ? courseObj.short : ''}`,
+                title,
+                scenario,
+                solutionSteps: [{ step: 'Penyelesaian / Kunci Jawaban', detail: solution }]
+            });
+
+            saveData();
+            renderManageView();
+            renderEssayCases();
+            e.target.reset();
+            showToast('Studi kasus uraian baru berhasil ditambahkan!');
+        }
+
+        function copyToClipboardSafe(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        }
+
+        function copyAIPromptTemplate() {
+            const template = `Buatkan bank soal latihan UAS Universitas Terbuka berdasarkan kisi-kisi/materi berikut dalam format JSON murni (tanpa markdown) dengan struktur:\n{\n  "courses": [{ "id": "KODEMATKUL", "code": "KODEMATKUL", "name": "Nama Mata Kuliah", "short": "Nama Singkat" }],\n  "quizzes": [{ "id": "q-1", "course": "KODEMATKUL", "topic": "Topik Modul", "question": "Pertanyaan...", "options": ["Opsi A", "Opsi B", "Opsi C", "Opsi D"], "correctIndex": 0, "explanation": "Pembahasan lengkap..." }],\n  "flashcards": [{ "id": "fc-1", "course": "KODEMATKUL", "courseName": "Nama Singkat", "front": "Istilah", "back": "Penjelasan", "note": "Tips" }],\n  "essays": [{ "id": "es-1", "course": "KODEMATKUL", "code": "KODEMATKUL", "title": "Judul Kasus", "scenario": "Skenario...", "solutionSteps": [{ "step": "Langkah 1", "detail": "Jawaban..." }] }]\n}\n\n[TEMPELKAN KISI-KISI ATAU RANGKUMAN MODUL UT DI SINI]`;
+            copyToClipboardSafe(template);
+            showToast('Prompt Generator AI berhasil dicopy ke clipboard!');
+        }
+
+        function fillSampleJSON() {
+            const sample = {
+                courses: [{ id: 'EKMA4313', code: 'EKMA4313', name: 'Akuntansi Keuangan Menengah II', short: 'Akuntansi Keuangan II' }],
+                quizzes: [{
+                    id: 'sample-akm2-1',
+                    course: 'EKMA4313',
+                    topic: 'Modul 1 • Liabilitas Jangka Pendek',
+                    question: 'Kewajiban kini entitas yang timbul dari peristiwa masa lalu dan penyelesaiannya diperkirakan mengakibatkan arus keluar sumber daya yang mengandung manfaat ekonomi disebut...',
+                    options: ['Ekuitas', 'Liabilitas', 'Aset Lancar', 'Pendapatan Komprehensif'],
+                    correctIndex: 1,
+                    explanation: 'Liabilitas adalah kewajiban kini yang timbul dari peristiwa masa lalu dengan penyelesaian berupa arus keluar sumber daya ekonomi.'
+                }],
+                flashcards: [{
+                    id: 'sample-fc-akm2-1',
+                    course: 'EKMA4313',
+                    courseName: 'Akuntansi Keuangan II',
+                    front: 'Liabilitas Jangka Pendek',
+                    back: 'Kewajiban yang diperkirakan akan diselesaikan dalam siklus operasi normal entitas atau jatuh tempo dalam waktu 12 bulan setelah periode pelaporan.',
+                    note: 'Contoh: utang usaha, beban akrual, bagian utang jangka panjang yang jatuh tempo < 12 bulan.'
+                }],
+                essays: []
+            };
+            document.getElementById('json-import-input').value = JSON.stringify(sample, null, 2);
+            showToast('Contoh JSON berhasil diisi ke kotak editor.', 'info');
+        }
+
+        function importFromJSON(replaceAll) {
+            const raw = document.getElementById('json-import-input').value.trim();
+            if (!raw) {
+                showToast('Kotak JSON masih kosong!', 'error');
+                return;
+            }
+
+            try {
+                const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+                const parsed = JSON.parse(cleaned);
+
+                if (replaceAll) {
+                    appData.courses = [];
+                    appData.quizzes = [];
+                    appData.flashcards = [];
+                    appData.essays = [];
+                    appData.quizAnswers = {};
+                    appData.quizDoubts = {};
+                    appData.fcMastered = {};
+                    appData.lastQuizId = null;
+                    appData.selectedCourse = 'ALL';
+                }
+
+                if (Array.isArray(parsed.courses)) {
+                    parsed.courses.forEach(c => {
+                        if (c.id && !appData.courses.some(existing => existing.id === c.id)) {
+                            appData.courses.push({
+                                id: String(c.id).toUpperCase(),
+                                code: String(c.code || c.id).toUpperCase(),
+                                name: c.name || c.id,
+                                short: c.short || c.name || c.id
+                            });
+                        }
+                    });
+                }
+
+                let addedQ = 0;
+                if (Array.isArray(parsed.quizzes)) {
+                    parsed.quizzes.forEach((q, idx) => {
+                        if (q.question && Array.isArray(q.options) && q.options.length >= 2) {
+                            const cId = String(q.course || (appData.courses[0]?.id || 'UMUM')).toUpperCase();
+                            if (!appData.courses.some(c => c.id === cId)) {
+                                appData.courses.push({ id: cId, code: cId, name: cId, short: cId });
+                            }
+                            appData.quizzes.push({
+                                id: `${q.id || 'imp-q'}-${Date.now()}-${idx}`,
+                                course: cId,
+                                topic: q.topic || 'Kisi-Kisi Import',
+                                question: q.question,
+                                options: q.options.slice(0, 4),
+                                correctIndex: Number(q.correctIndex) || 0,
+                                explanation: q.explanation || 'Sesuai materi kisi-kisi.'
+                            });
+                            addedQ++;
+                        }
+                    });
+                }
+
+                let addedFC = 0;
+                if (Array.isArray(parsed.flashcards)) {
+                    parsed.flashcards.forEach((f, idx) => {
+                        if (f.front && f.back) {
+                            const cId = String(f.course || (appData.courses[0]?.id || 'UMUM')).toUpperCase();
+                            appData.flashcards.push({
+                                id: `${f.id || 'imp-fc'}-${Date.now()}-${idx}`,
+                                course: cId,
+                                courseName: f.courseName || cId,
+                                front: f.front,
+                                back: f.back,
+                                note: f.note || ''
+                            });
+                            addedFC++;
+                        }
+                    });
+                }
+
+                let addedEs = 0;
+                if (Array.isArray(parsed.essays)) {
+                    parsed.essays.forEach((es, idx) => {
+                        if (es.title && es.scenario) {
+                            const cId = String(es.course || (appData.courses[0]?.id || 'UMUM')).toUpperCase();
+                            appData.essays.push({
+                                id: `${es.id || 'imp-es'}-${Date.now()}-${idx}`,
+                                course: cId,
+                                code: es.code || cId,
+                                title: es.title,
+                                scenario: es.scenario,
+                                solutionSteps: Array.isArray(es.solutionSteps) ? es.solutionSteps : []
+                            });
+                            addedEs++;
+                        }
+                    });
+                }
+
+                saveData();
+                renderCourseFilters();
+                renderManageView();
+                prepareQuizList(false);
+                prepareFlashcardList();
+                renderEssayCases();
+                showToast(`Berhasil mengimpor ${addedQ} Soal PG, ${addedFC} Flashcard, dan ${addedEs} Studi Kasus!`);
+            } catch (err) {
+                console.error('JSON Import Error:', err);
+                showToast(`Format JSON tidak valid: ${err.message}`, 'error');
+            }
+        }
+
+        function exportBankToJSON() {
+            const payload = {
+                exportedAt: new Date().toISOString(),
+                courses: appData.courses,
+                quizzes: appData.quizzes,
+                flashcards: appData.flashcards,
+                essays: appData.essays
+            };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `UT-ExamPrep-Backup-${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('File backup .json berhasil diunduh!');
+        }
+
+        function restoreBankFromJSONFile(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('json-import-input').value = e.target.result;
+                importFromJSON(true);
+            };
+            reader.readAsText(file);
+        }
+
+        function openResetModal() {
+            document.getElementById('reset-modal')?.classList.remove('hidden');
+        }
+
+        function closeResetModal() {
+            document.getElementById('reset-modal')?.classList.add('hidden');
+        }
+
+        async function executeResetAll() {
+            try {
+                if (typeof window.name === 'string' && window.name.startsWith(WINDOW_NAME_PREFIX)) {
+                    window.name = '';
+                }
+                if (window.localStorage) window.localStorage.removeItem(STORAGE_KEY);
+                if (window.sessionStorage) window.sessionStorage.removeItem(STORAGE_KEY);
+                memorySnapshotJSON = null;
+                await clearIDB();
+            } catch (e) {}
+            resetDataToDefaultObject();
+            saveData();
+            closeResetModal();
+            applyDarkMode();
+            renderCourseFilters();
+            renderManageView();
+            prepareQuizList(false);
+            prepareFlashcardList();
+            renderEssayCases();
+            showToast('Bank soal & skor berhasil dikosongkan!', 'info');
+        }
+
+        function ensurePDFJSLoaded() {
+            return new Promise((resolve, reject) => {
+                if (window.pdfjsLib) {
+                    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                    resolve(window.pdfjsLib);
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+                script.async = true;
+                script.onload = () => {
+                    if (window.pdfjsLib) {
+                        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                        resolve(window.pdfjsLib);
+                    } else {
+                        reject(new Error('PDF.js gagal terinisialisasi.'));
+                    }
+                };
+                script.onerror = () => reject(new Error('Gagal memuat library PDF.js dari jaringan.'));
+                document.head.appendChild(script);
+            });
+        }
+
+        function saveGeminiApiKey(val) {
+            try {
+                if (window.localStorage) window.localStorage.setItem(GEMINI_KEY_STORAGE, val.trim());
+                if (val.trim()) showToast('Gemini API Key tersimpan di perangkat Anda.', 'info');
+            } catch (e) {}
+        }
+
+        function setupPDFDragAndDrop() {
+            const dropZone = document.getElementById('pdf-drop-zone');
+            if (!dropZone) return;
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evtName => {
+                dropZone.addEventListener(evtName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+            });
+
+            ['dragenter', 'dragover'].forEach(evtName => {
+                dropZone.addEventListener(evtName, () => {
+                    dropZone.classList.add('border-indigo-600', 'bg-indigo-100/60');
+                });
+            });
+
+            ['dragleave', 'drop'].forEach(evtName => {
+                dropZone.addEventListener(evtName, () => {
+                    dropZone.classList.remove('border-indigo-600', 'bg-indigo-100/60');
+                });
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                const files = e.dataTransfer?.files;
+                if (files && files.length > 0) processPDFFiles(files);
+            });
+        }
+
+        function handlePDFFileSelect(event) {
+            const files = event.target.files;
+            if (files && files.length > 0) processPDFFiles(files);
+        }
+
+        function clearUploadedPDF() {
+            extractedPDFState = { files: [], totalPages: 0, fullText: '', structuredLines: [] };
+            pendingParsedPDFPayload = null;
+            const inputEl = document.getElementById('pdf-file-input');
+            if (inputEl) inputEl.value = '';
+            document.getElementById('pdf-status-card')?.classList.add('hidden');
+            document.getElementById('pdf-preview-drawer')?.classList.add('hidden');
+            const bar = document.getElementById('pdf-extract-bar');
+            if (bar) bar.style.width = '0%';
+            showToast('File PDF dihapus dari antrean.', 'info');
+        }
+
+        function isYellowishRGB(r, g, b) {
+            return r > 0.72 && g > 0.68 && b < 0.58 && (r + g - 2 * b) > 0.65;
+        }
+
+        async function extractPageHighlightYRanges(page, pdfjs) {
+            const yellowYRanges = [];
+            try {
+                const annotations = await page.getAnnotations();
+                if (Array.isArray(annotations)) {
+                    annotations.forEach(ann => {
+                        if (ann && ann.rect && ann.rect.length === 4) {
+                            const subtype = String(ann.subtype || '').toLowerCase();
+                            const col = ann.color;
+                            const isYellowAnn = col && col.length >= 3 && isYellowishRGB(col[0] / 255, col[1] / 255, col[2] / 255);
+                            if (subtype === 'highlight' || isYellowAnn) {
+                                yellowYRanges.push({
+                                    yMin: Math.min(ann.rect[1], ann.rect[3]) - 3,
+                                    yMax: Math.max(ann.rect[1], ann.rect[3]) + 3
+                                });
+                            }
+                        }
+                    });
+                }
+
+                const OPS = pdfjs.OPS || {};
+                const opList = await page.getOperatorList();
+                let curRGB = [0, 0, 0];
+                let ctm = [1, 0, 0, 1, 0, 0];
+                const ctmStack = [];
+                let pendingRects = [];
+
+                const multiplyMatrix = (m1, m2) => [
+                    m1[0] * m2[0] + m1[2] * m2[1],
+                    m1[1] * m2[0] + m1[3] * m2[1],
+                    m1[0] * m2[2] + m1[2] * m2[3],
+                    m1[1] * m2[2] + m1[3] * m2[3],
+                    m1[0] * m2[4] + m1[2] * m2[5] + m1[4],
+                    m1[1] * m2[4] + m1[3] * m2[5] + m1[5]
+                ];
+
+                for (let i = 0; i < opList.fnArray.length; i++) {
+                    const fn = opList.fnArray[i];
+                    const args = opList.argsArray[i];
+
+                    if (fn === OPS.save) {
+                        ctmStack.push([...ctm]);
+                    } else if (fn === OPS.restore) {
+                        if (ctmStack.length > 0) ctm = ctmStack.pop();
+                    } else if (fn === OPS.transform && Array.isArray(args) && args.length === 6) {
+                        ctm = multiplyMatrix(ctm, args);
+                    } else if (fn === OPS.setFillRGBColor && Array.isArray(args) && args.length >= 3) {
+                        const scale = (args[0] > 1 || args[1] > 1 || args[2] > 1) ? 255 : 1;
+                        curRGB = [args[0] / scale, args[1] / scale, args[2] / scale];
+                    } else if (fn === OPS.setFillCMYKColor && Array.isArray(args) && args.length >= 4) {
+                        const [c, m, y, k] = args;
+                        curRGB = [(1 - c) * (1 - k), (1 - m) * (1 - k), (1 - y) * (1 - k)];
+                    } else if (fn === OPS.setFillGray && Array.isArray(args) && args.length >= 1) {
+                        curRGB = [args[0], args[0], args[0]];
+                    } else if (fn === OPS.rectangle && Array.isArray(args) && args.length === 4) {
+                        const [x, y, w, h] = args;
+                        const y1 = ctm[1] * x + ctm[3] * y + ctm[5];
+                        const y2 = ctm[1] * (x + w) + ctm[3] * (y + h) + ctm[5];
+                        const height = Math.abs(y2 - y1);
+                        const width = Math.abs(ctm[0] * w + ctm[2] * h);
+                        if (height >= 4 && height <= 45 && width >= 30) {
+                            pendingRects.push({
+                                yMin: Math.min(y1, y2) - 2,
+                                yMax: Math.max(y1, y2) + 2
+                            });
+                        }
+                    } else if (fn === OPS.constructPath && Array.isArray(args) && args.length >= 2) {
+                        const ops = args[0];
+                        const coords = args[1];
+                        if (Array.isArray(ops) && Array.isArray(coords)) {
+                            let cIdx = 0;
+                            for (let k = 0; k < ops.length; k++) {
+                                if (ops[k] === OPS.rectangle && cIdx + 3 < coords.length) {
+                                    const x = coords[cIdx], y = coords[cIdx + 1], w = coords[cIdx + 2], h = coords[cIdx + 3];
+                                    cIdx += 4;
+                                    const y1 = ctm[1] * x + ctm[3] * y + ctm[5];
+                                    const y2 = ctm[1] * (x + w) + ctm[3] * (y + h) + ctm[5];
+                                    const height = Math.abs(y2 - y1);
+                                    const width = Math.abs(ctm[0] * w + ctm[2] * h);
+                                    if (height >= 4 && height <= 45 && width >= 30) {
+                                        pendingRects.push({ yMin: Math.min(y1, y2) - 2, yMax: Math.max(y1, y2) + 2 });
+                                    }
+                                } else if (ops[k] === OPS.moveTo || ops[k] === OPS.lineTo) {
+                                    cIdx += 2;
+                                } else if (ops[k] === OPS.curveTo) {
+                                    cIdx += 6;
+                                }
+                            }
+                        }
+                    } else if (fn === OPS.fill || fn === OPS.eoFill || fn === OPS.fillStroke || fn === OPS.eoFillStroke) {
+                        if (pendingRects.length > 0 && isYellowishRGB(curRGB[0], curRGB[1], curRGB[2])) {
+                            yellowYRanges.push(...pendingRects);
+                        }
+                        pendingRects = [];
+                    } else if (fn === OPS.stroke || fn === OPS.endPath) {
+                        pendingRects = [];
+                    }
+                }
+            } catch (e) {}
+            return yellowYRanges;
+        }
+
+        function buildPageStructuredLines(textContent, pageNum, yellowYRanges) {
+            const styles = textContent.styles || {};
+            const rawItems = (textContent.items || [])
+                .filter(it => it && typeof it.str === 'string' && it.str.trim().length > 0)
+                .map(it => {
+                    const x = it.transform ? it.transform[4] : 0;
+                    const y = it.transform ? it.transform[5] : 0;
+                    const fontName = String(it.fontName || '').toLowerCase();
+                    const styleObj = styles[it.fontName] || {};
+                    const fontFamily = String(styleObj.fontFamily || '').toLowerCase();
+                    const isBold = fontName.includes('bold') || fontName.includes('bd') || fontFamily.includes('bold');
+                    const isItalic = fontName.includes('italic') || fontName.includes('oblique') || fontName.includes('it') || fontFamily.includes('italic');
+                    const isHighlighted = yellowYRanges.some(r => y >= r.yMin && y <= r.yMax);
+
+                    return {
+                        str: it.str,
+                        x,
+                        y,
+                        width: it.width || 0,
+                        isBold,
+                        isItalic,
+                        isHighlighted
+                    };
+                });
+
+            rawItems.sort((a, b) => {
+                if (Math.abs(b.y - a.y) > 3.5) return b.y - a.y;
+                return a.x - b.x;
+            });
+
+            const lines = [];
+            rawItems.forEach(tok => {
+                const lastLine = lines[lines.length - 1];
+                if (lastLine && Math.abs(lastLine.y - tok.y) <= 3.5) {
+                    lastLine.tokens.push(tok);
+                } else {
+                    lines.push({
+                        page: pageNum,
+                        y: tok.y,
+                        tokens: [tok]
+                    });
+                }
+            });
+
+            return lines.map(line => {
+                line.tokens.sort((a, b) => a.x - b.x);
+                let text = '';
+                let prevEndX = null;
+
+                line.tokens.forEach(tok => {
+                    if (prevEndX !== null) {
+                        const gap = tok.x - prevEndX;
+                        if (gap > 18) text += '   ';
+                        else if (gap > 2.2 && !text.endsWith(' ') && !tok.str.startsWith(' ')) text += ' ';
+                    }
+                    text += tok.str;
+                    prevEndX = tok.x + tok.width;
+                });
+
+                const boldChars = line.tokens.filter(t => t.isBold).reduce((s, t) => s + t.str.trim().length, 0);
+                const italicChars = line.tokens.filter(t => t.isItalic).reduce((s, t) => s + t.str.trim().length, 0);
+                const highlightChars = line.tokens.filter(t => t.isHighlighted).reduce((s, t) => s + t.str.trim().length, 0);
+                const totalChars = Math.max(1, line.tokens.reduce((s, t) => s + t.str.trim().length, 0));
+
+                return {
+                    page: line.page,
+                    y: line.y,
+                    text: text.replace(/\s+/g, ' ').trim(),
+                    rawTabbedText: text.trim(),
+                    tokens: line.tokens,
+                    isBold: (boldChars / totalChars) > 0.55,
+                    isItalic: (italicChars / totalChars) > 0.55,
+                    isHighlighted: (highlightChars / totalChars) > 0.45
+                };
+            });
+        }
+
+        async function processPDFFiles(fileList) {
+            const pdfFiles = Array.from(fileList).filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+            if (pdfFiles.length === 0) {
+                showToast('Harap pilih file berformat .PDF!', 'error');
+                return;
+            }
+
+            const statusCard = document.getElementById('pdf-status-card');
+            const summaryEl = document.getElementById('pdf-files-summary');
+            const barEl = document.getElementById('pdf-extract-bar');
+            const statusTextEl = document.getElementById('pdf-extract-status');
+            const charCountEl = document.getElementById('pdf-char-count');
+
+            if (statusCard) statusCard.classList.remove('hidden');
+            document.getElementById('pdf-preview-drawer')?.classList.add('hidden');
+            const totalSizeMB = (pdfFiles.reduce((acc, f) => acc + f.size, 0) / (1024 * 1024)).toFixed(2);
+            if (summaryEl) summaryEl.textContent = `${pdfFiles.length} PDF (${pdfFiles.map(f => f.name).join(', ')}) • ${totalSizeMB} MB`;
+            if (barEl) barEl.style.width = '5%';
+            if (statusTextEl) statusTextEl.textContent = 'Menyiapkan pembaca PDF...';
+
+            try {
+                const pdfjs = await ensurePDFJSLoaded();
+                let combinedText = '';
+                let allStructuredLines = [];
+                let totalPagesAll = 0;
+
+                for (let fIdx = 0; fIdx < pdfFiles.length; fIdx++) {
+                    const file = pdfFiles[fIdx];
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdfDoc = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+                    totalPagesAll += pdfDoc.numPages;
+
+                    combinedText += `\n=== DOKUMEN: ${file.name} (${pdfDoc.numPages} Halaman) ===\n`;
+
+                    for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+                        const page = await pdfDoc.getPage(pageNum);
+                        const [textContent, yellowYRanges] = await Promise.all([
+                            page.getTextContent(),
+                            extractPageHighlightYRanges(page, pdfjs)
+                        ]);
+
+                        const pageLines = buildPageStructuredLines(textContent, pageNum, yellowYRanges);
+                        allStructuredLines.push(...pageLines);
+
+                        const pageText = pageLines.map(l => l.text).join('\n');
+                        combinedText += `\n[Halaman ${pageNum}]\n${pageText}\n`;
+
+                        const progressPct = Math.min(96, Math.round((((fIdx + (pageNum / pdfDoc.numPages)) / pdfFiles.length) * 90) + 6));
+                        if (barEl) barEl.style.width = `${progressPct}%`;
+                        if (statusTextEl) statusTextEl.textContent = `Membaca ${file.name} (Hal. ${pageNum}/${pdfDoc.numPages})...`;
+                    }
+                }
+
+                extractedPDFState = {
+                    files: pdfFiles.map(f => f.name),
+                    totalPages: totalPagesAll,
+                    fullText: combinedText.trim(),
+                    structuredLines: allStructuredLines
+                };
+
+                if (barEl) barEl.style.width = '100%';
+                if (statusTextEl) statusTextEl.textContent = `Selesai! ${totalPagesAll} halaman (${allStructuredLines.length} baris) diekstrak penuh tanpa pemotongan.`;
+                if (charCountEl) charCountEl.textContent = `${extractedPDFState.fullText.length.toLocaleString('id-ID')} karakter`;
+
+                const headerMatch = extractedPDFState.fullText.match(/\b([A-Z]{4}\d{4})\s*[-–:]\s*([A-Z0-9\s,&()]{4,60})/);
+                const codeMatch = headerMatch || extractedPDFState.fullText.match(/\b([A-Z]{4}\d{4})\b/);
+                const codeInput = document.getElementById('pdf-target-code');
+                const nameInput = document.getElementById('pdf-target-name');
+
+                if (codeMatch && codeInput && !codeInput.value.trim()) {
+                    codeInput.value = codeMatch[1].trim();
+                }
+                if (headerMatch && headerMatch[2] && nameInput && !nameInput.value.trim()) {
+                    const cleanName = headerMatch[2].split('\n')[0].trim();
+                    if (cleanName.length >= 4 && cleanName.length <= 55) {
+                        nameInput.value = cleanName;
+                    }
+                }
+
+                if (extractedPDFState.fullText.length < 40) {
+                    showToast('Teks PDF sangat sedikit (kemungkinan PDF hasil scan gambar).', 'error');
+                } else {
+                    showToast(`Berhasil membaca ${totalPagesAll} halaman PDF! Klik Jalur C untuk ekstrak semua soal + kunci.`);
+                }
+            } catch (err) {
+                console.error('PDF extraction error:', err);
+                if (statusTextEl) statusTextEl.textContent = 'Gagal mengekstrak PDF.';
+                showToast(`Gagal membaca PDF: ${err.message}`, 'error');
+            }
+        }
+
+        function buildPDFPromptForAI(pdfText) {
+            const targetCode = (document.getElementById('pdf-target-code')?.value || '').trim().toUpperCase();
+            const targetName = (document.getElementById('pdf-target-name')?.value || '').trim();
+            const qCount = document.getElementById('pdf-question-count')?.value || '30';
+            const fcCount = Math.max(10, Math.round(Number(qCount) / 2));
+
+            const courseInstruction = targetCode
+                ? `Gunakan kode mata kuliah "${targetCode}"${targetName ? ` dengan nama "${targetName}"` : ' (ekstrak nama matkul dari teks PDF)'}.`
+                : 'Deteksi kode mata kuliah UT (seperti EKMA4313, EMBS4207) dan nama mata kuliah dari isi dokumen PDF.';
+
+            const trimmedText = pdfText.slice(0, 65000);
+
+            return `Anda adalah dosen penyusun soal ujian Universitas Terbuka (UT) yang ahli.
+Berdasarkan teks dokumen PDF di bawah ini, buatkan paket latihan ujian lengkap dalam format JSON VALID murni (TANPA markdown dan TANPA teks pengantar).
+
+${courseInstruction}
+Target jumlah item:
+- Minimal ${qCount} soal pilihan ganda ("quizzes") dengan 4 opsi jawaban (A, B, C, D) dan pembahasan mendalam.
+- Minimal ${fcCount} kartu hafalan konsep ("flashcards").
+- Minimal 2 studi kasus uraian ("essays") lengkap dengan langkah penyelesaian.
+
+Gunakan struktur JSON PERSIS berikut:
+{
+  "courses": [{ "id": "KODEMATKUL", "code": "KODEMATKUL", "name": "Nama Lengkap Mata Kuliah", "short": "Nama Singkat" }],
+  "quizzes": [{ "id": "q-1", "course": "KODEMATKUL", "topic": "Topik Modul", "question": "Pertanyaan...", "options": ["A", "B", "C", "D"], "correctIndex": 0, "explanation": "Pembahasan..." }],
+  "flashcards": [{ "id": "fc-1", "course": "KODEMATKUL", "courseName": "Nama Singkat", "front": "Istilah", "back": "Penjelasan", "note": "Catatan" }],
+  "essays": [{ "id": "es-1", "course": "KODEMATKUL", "code": "KODEMATKUL", "title": "Judul Kasus", "scenario": "Skenario...", "solutionSteps": [{ "step": "Langkah 1", "detail": "Jawaban..." }] }]
+}
+
+=== ISI DOKUMEN PDF ===
+${trimmedText}`;
+        }
+
+        async function generateBankFromPDFWithGemini() {
+            if (!extractedPDFState.fullText) {
+                showToast('Silakan unggah file PDF terlebih dahulu!', 'error');
+                return;
+            }
+
+            const apiKey = (document.getElementById('gemini-api-key-input')?.value || '').trim();
+            if (!apiKey) {
+                showToast('Masukkan Gemini API Key terlebih dahulu, atau gunakan Jalur B / Jalur C.', 'error');
+                document.getElementById('gemini-api-key-input')?.focus();
+                return;
+            }
+
+            const model = document.getElementById('gemini-model-select')?.value || 'gemini-2.5-flash';
+            const btn = document.getElementById('btn-generate-pdf-ai');
+            const btnLabel = document.getElementById('btn-generate-pdf-ai-label');
+            const replaceAll = document.querySelector('input[name="pdf-import-mode"]:checked')?.value === 'replace';
+
+            if (btn) btn.disabled = true;
+            if (btnLabel) btnLabel.textContent = 'Sedang Menyusun Soal dari PDF...';
+
+            try {
+                const prompt = buildPDFPromptForAI(extractedPDFState.fullText);
+                const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { temperature: 0.4, responseMimeType: 'application/json' }
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error?.message || `HTTP Error ${response.status}`);
+
+                const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!rawText) throw new Error('Respons AI kosong.');
+
+                document.getElementById('json-import-input').value = rawText;
+                importFromJSON(replaceAll);
+                switchMode('quiz');
+            } catch (err) {
+                console.error('Gemini API error:', err);
+                showToast(`Gagal memproses via Gemini API: ${err.message}`, 'error');
+            } finally {
+                if (btn) btn.disabled = false;
+                if (btnLabel) btnLabel.textContent = 'Proses PDF Jadi Bank Soal Sekarang';
+            }
+        }
+
+        function copyPDFTextWithPrompt() {
+            if (!extractedPDFState.fullText) {
+                showToast('Silakan unggah file PDF terlebih dahulu!', 'error');
+                return;
+            }
+            const fullPrompt = buildPDFPromptForAI(extractedPDFState.fullText);
+            copyToClipboardSafe(fullPrompt);
+            showToast('Teks PDF + Prompt Generator berhasil dicopy! Paste ke chat Gemini, lalu paste JSON hasilnya di bawah.');
+            document.getElementById('json-import-input')?.focus();
+        }
+
+        function isNoiseOrWatermarkLine(text) {
+            const t = text.trim();
+            if (!t) return true;
+            if (/^Kisi\s+Kisi\s+Soal\s+UT$/i.test(t)) return true;
+            if (/^[A-Z]{4}\d{4}\s*[-–]\s*[A-Z\s,&()]{3,60}$/.test(t)) return true;
+            if (/Edit\s+soal\s+by\s+Tiktok/i.test(t)) return true;
+            if (/Bantu\s+Mahasiswa\s+UT/i.test(t)) return true;
+            if (/ORDER\s+SOAL/i.test(t)) return true;
+            if (/Soal-soal\s+ini\s+merupakan\s+hasil\s+rekap\s+dari\s+bank\s+soal/i.test(t)) return true;
+            if (/karena\s+soal\s+aslinya\s+hanya\s+dapat\s+dibaca\s+melalui\s+web/i.test(t)) return true;
+            if (/materi,\s*jangan\s+hanya\s+mengandalkan\s+jawaban/i.test(t)) return true;
+            if (/screenshot\s+dari\s+bank\s+soal\s+asli/i.test(t)) return true;
+            if (/^08\d{2}[-\s]?\d{4}[-\s]?\d{3,4}$/.test(t)) return true;
+            if (/^\d{1,3}\s*\/\s*\d{1,3}$/.test(t)) return true;
+            return false;
+        }
+
+        function extractMultiColumnAnswerKey(lines) {
+            const answerKeyMap = {};
+            let keyStartIndex = -1;
+
+            for (let i = 0; i < lines.length; i++) {
+                if (/KUNCI\s+JAWABAN/i.test(lines[i].text)) {
+                    keyStartIndex = i;
+                    break;
+                }
+            }
+
+            if (keyStartIndex === -1) return { answerKeyMap, keyStartIndex: lines.length };
+
+            const keyLines = lines.slice(keyStartIndex);
+            const pairRegex = /(?:^|\s)(\d{1,3})\s+([A-Da-d])(?=\s|$)/g;
+
+            keyLines.forEach(line => {
+                if (isNoiseOrWatermarkLine(line.text)) return;
+                if (/^No\.?\s+Kunci/i.test(line.text)) return;
+
+                let match;
+                pairRegex.lastIndex = 0;
+                while ((match = pairRegex.exec(line.text)) !== null) {
+                    const num = parseInt(match[1], 10);
+                    const letter = match[2].toUpperCase();
+                    if (num >= 1 && num <= 500 && ['A', 'B', 'C', 'D'].includes(letter)) {
+                        answerKeyMap[num] = letter;
+                    }
+                }
+            });
+
+            return { answerKeyMap, keyStartIndex };
+        }
+
+        function parseDirectQuestionsFromPDF() {
+            if (!extractedPDFState.fullText || extractedPDFState.structuredLines.length === 0) {
+                showToast('Silakan unggah file PDF terlebih dahulu!', 'error');
+                return;
+            }
+
+            const targetCode = (document.getElementById('pdf-target-code')?.value || '').trim().toUpperCase() || 'PDF-MATKUL';
+            const targetName = (document.getElementById('pdf-target-name')?.value || '').trim() || `Bank Soal ${targetCode}`;
+
+            const { answerKeyMap, keyStartIndex } = extractMultiColumnAnswerKey(extractedPDFState.structuredLines);
+            const questionAreaLines = extractedPDFState.structuredLines
+                .slice(0, keyStartIndex)
+                .filter(line => !isNoiseOrWatermarkLine(line.text));
+
+            const rawQuestions = [];
+            let currentQ = null;
+            let currentOptKey = null;
+
+            const finalizeCurrentQuestion = () => {
+                if (!currentQ) return;
+                const opts = ['A', 'B', 'C', 'D'].map(k => currentQ.options[k].text.trim());
+                if (currentQ.stem.trim().length >= 5 && opts.every(o => o.length > 0)) {
+                    rawQuestions.push(currentQ);
+                }
+                currentQ = null;
+                currentOptKey = null;
+            };
+
+            for (let i = 0; i < questionAreaLines.length; i++) {
+                const line = questionAreaLines[i];
+                const txt = line.text;
+
+                const qStartMatch = txt.match(/^(\d{1,3})[\.\)]\s+(.+)$/);
+                if (qStartMatch) {
+                    const qNum = parseInt(qStartMatch[1], 10);
+                    const prevNum = rawQuestions.length > 0 ? rawQuestions[rawQuestions.length - 1].num : 0;
+                    const curNum = currentQ ? currentQ.num : prevNum;
+
+                    if (qNum >= 1 && (curNum === 0 || (qNum >= curNum && qNum <= curNum + 5))) {
+                        finalizeCurrentQuestion();
+                        currentQ = {
+                            num: qNum,
+                            stem: qStartMatch[2].trim(),
+                            options: {
+                                A: { text: '', highlighted: false, styled: false },
+                                B: { text: '', highlighted: false, styled: false },
+                                C: { text: '', highlighted: false, styled: false },
+                                D: { text: '', highlighted: false, styled: false }
+                            }
+                        };
+                        currentOptKey = null;
+                        continue;
+                    }
+                }
+
+                if (!currentQ) continue;
+
+                const inlineOptMatches = [...txt.matchAll(/(?:^|\s{2,})([A-Da-d])[\.\)]\s+/g)];
+                if (inlineOptMatches.length >= 2) {
+                    for (let mIdx = 0; mIdx < inlineOptMatches.length; mIdx++) {
+                        const m = inlineOptMatches[mIdx];
+                        const optLetter = m[1].toUpperCase();
+                        const startPos = m.index + m[0].length;
+                        const endPos = mIdx + 1 < inlineOptMatches.length ? inlineOptMatches[mIdx + 1].index : txt.length;
+                        const sliceText = txt.slice(startPos, endPos).trim();
+
+                        currentOptKey = optLetter;
+                        currentQ.options[optLetter].text += (currentQ.options[optLetter].text ? ' ' : '') + sliceText;
+                        if (line.isHighlighted) currentQ.options[optLetter].highlighted = true;
+                        if (line.isBold || line.isItalic) currentQ.options[optLetter].styled = true;
+                    }
+                    continue;
+                }
+
+                const optStartMatch = txt.match(/^([A-Da-d])[\.\)]\s+(.+)$/);
+                if (optStartMatch) {
+                    const optLetter = optStartMatch[1].toUpperCase();
+                    currentOptKey = optLetter;
+                    currentQ.options[optLetter].text += (currentQ.options[optLetter].text ? ' ' : '') + optStartMatch[2].trim();
+                    if (line.isHighlighted) currentQ.options[optLetter].highlighted = true;
+                    if (line.isBold || line.isItalic) currentQ.options[optLetter].styled = true;
+                    continue;
+                }
+
+                if (currentOptKey) {
+                    currentQ.options[currentOptKey].text += ' ' + txt;
+                    if (line.isHighlighted) currentQ.options[currentOptKey].highlighted = true;
+                    if (line.isBold || line.isItalic) currentQ.options[currentOptKey].styled = true;
+                } else {
+                    currentQ.stem += ' ' + txt;
+                }
+            }
+            finalizeCurrentQuestion();
+
+            if (rawQuestions.length === 0) {
+                showToast('Tidak ditemukan struktur soal bernomor (1. ... A. B. C. D.) pada PDF ini. Gunakan Jalur A atau Jalur B.', 'error');
+                return;
+            }
+
+            const letterToIdx = { A: 0, B: 1, C: 2, D: 3 };
+            const idxToLetter = ['A', 'B', 'C', 'D'];
+            let matchedFromTable = 0;
+            let matchedFromHighlight = 0;
+
+            const parsedQuizzes = rawQuestions.map((rq, idx) => {
+                let correctIndex = 0;
+                let keySource = 'Default (A)';
+
+                if (answerKeyMap[rq.num]) {
+                    correctIndex = letterToIdx[answerKeyMap[rq.num]];
+                    keySource = `Tabel Kunci Jawaban (${answerKeyMap[rq.num]})`;
+                    matchedFromTable++;
+                } else {
+                    const highlightedLetters = ['A', 'B', 'C', 'D'].filter(k => rq.options[k].highlighted);
+                    if (highlightedLetters.length === 1) {
+                        correctIndex = letterToIdx[highlightedLetters[0]];
+                        keySource = `Highlight Kuning PDF (${highlightedLetters[0]})`;
+                        matchedFromHighlight++;
+                    } else {
+                        const styledLetters = ['A', 'B', 'C', 'D'].filter(k => rq.options[k].styled);
+                        if (styledLetters.length === 1) {
+                            correctIndex = letterToIdx[styledLetters[0]];
+                            keySource = `Format Tebal/Miring PDF (${styledLetters[0]})`;
+                            matchedFromHighlight++;
+                        }
+                    }
+                }
+
+                const cleanStem = rq.stem.replace(/\s+/g, ' ').trim();
+                const cleanOptions = ['A', 'B', 'C', 'D'].map(k => rq.options[k].text.replace(/\s+/g, ' ').trim());
+
+                return {
+                    id: `pdf-ut-${Date.now()}-${rq.num}-${idx}`,
+                    num: rq.num,
+                    course: targetCode,
+                    topic: `${targetCode} • Soal #${rq.num}`,
+                    question: cleanStem,
+                    options: cleanOptions,
+                    correctIndex,
+                    keySource,
+                    explanation: `Kunci Jawaban: ${idxToLetter[correctIndex]}. ${cleanOptions[correctIndex]} (Sumber: ${keySource}).`
+                };
+            });
+
+            pendingParsedPDFPayload = {
+                courses: [{ id: targetCode, code: targetCode, name: targetName, short: targetName }],
+                quizzes: parsedQuizzes,
+                flashcards: [],
+                essays: [],
+                stats: {
+                    totalQuestions: parsedQuizzes.length,
+                    totalKeysFromTable: Object.keys(answerKeyMap).length,
+                    matchedFromTable,
+                    matchedFromHighlight
+                }
+            };
+
+            openPDFPreviewDrawer();
+            showToast(`Berhasil mengekstrak ${parsedQuizzes.length} soal lengkap dari PDF!`);
+        }
+
+        function openPDFPreviewDrawer() {
+            if (!pendingParsedPDFPayload) return;
+            const drawer = document.getElementById('pdf-preview-drawer');
+            const statsBadge = document.getElementById('pdf-preview-stats-badge');
+            const subInfo = document.getElementById('pdf-preview-subinfo');
+            const commitLabel = document.getElementById('btn-commit-pdf-label');
+            const listEl = document.getElementById('pdf-preview-list');
+
+            const { quizzes, stats, courses } = pendingParsedPDFPayload;
+            const courseCode = courses[0]?.code || 'PDF';
+
+            if (drawer) drawer.classList.remove('hidden');
+            if (statsBadge) {
+                statsBadge.textContent = `Berhasil mengekstrak ${stats.totalQuestions} Soal PG & ${Math.max(stats.totalKeysFromTable, stats.matchedFromTable + stats.matchedFromHighlight)} Kunci Jawaban!`;
+            }
+            if (subInfo) {
+                subInfo.textContent = `Mata Kuliah: ${courseCode} • Terdeteksi ${stats.matchedFromTable} kunci dari tabel akhir & ${stats.matchedFromHighlight} dari highlight/format PDF. Anda dapat mengoreksi kunci tiap nomor jika perlu.`;
+            }
+            if (commitLabel) {
+                commitLabel.textContent = `Simpan & Mulai Latihan Semua (${stats.totalQuestions} Soal)`;
+            }
+
+            if (listEl) {
+                const letters = ['A', 'B', 'C', 'D'];
+                let html = '';
+                quizzes.forEach((q, idx) => {
+                    html += `
+                        <div class="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-emerald-200 dark:border-slate-700 space-y-2">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-0.5 rounded-md bg-indigo-600 text-white font-mono font-extrabold text-xs">
+                                        #${q.num || idx + 1}
+                                    </span>
+                                    <span class="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                                        ${escapeHTML(q.keySource)}
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[11px] font-bold text-slate-500">Kunci:</span>
+                                    ${letters.map((ltr, optIdx) => `
+                                        <button onclick="overrideParsedQuestionKey(${idx}, ${optIdx})" class="w-6 h-6 rounded-md text-xs font-extrabold transition ${
+                                            q.correctIndex === optIdx
+                                                ? 'bg-emerald-600 text-white shadow-xs'
+                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                                        }">
+                                            ${ltr}
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <p class="text-xs font-semibold text-slate-900 dark:text-slate-100 leading-relaxed">
+                                ${escapeHTML(q.question)}
+                            </p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px]">
+                                ${q.options.map((opt, optIdx) => `
+                                    <div class="px-2.5 py-1 rounded-lg ${
+                                        q.correctIndex === optIdx
+                                            ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-950 dark:text-amber-200 font-bold border border-amber-300 dark:border-amber-700'
+                                            : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400'
+                                    }">
+                                        <span class="font-extrabold">${letters[optIdx]}.</span> ${escapeHTML(opt)}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                });
+                listEl.innerHTML = html;
+            }
+
+            drawer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function overrideParsedQuestionKey(qIndex, newCorrectIndex) {
+            if (!pendingParsedPDFPayload || !pendingParsedPDFPayload.quizzes[qIndex]) return;
+            const q = pendingParsedPDFPayload.quizzes[qIndex];
+            const letters = ['A', 'B', 'C', 'D'];
+            q.correctIndex = newCorrectIndex;
+            q.keySource = `Koreksi Manual (${letters[newCorrectIndex]})`;
+            q.explanation = `Kunci Jawaban: ${letters[newCorrectIndex]}. ${q.options[newCorrectIndex]} (Dikoreksi manual).`;
+            openPDFPreviewDrawer();
+        }
+
+        function closePDFPreviewDrawer() {
+            document.getElementById('pdf-preview-drawer')?.classList.add('hidden');
+        }
+
+        function commitParsedPDFToBank() {
+            if (!pendingParsedPDFPayload) return;
+            const replaceAll = document.querySelector('input[name="pdf-import-mode"]:checked')?.value === 'replace';
+            const targetCourseId = pendingParsedPDFPayload.courses[0]?.id;
+
+            const cleanPayload = {
+                courses: pendingParsedPDFPayload.courses,
+                quizzes: pendingParsedPDFPayload.quizzes.map(({ id, course, topic, question, options, correctIndex, explanation }) => ({
+                    id, course, topic, question, options, correctIndex, explanation
+                })),
+                flashcards: [],
+                essays: []
+            };
+
+            document.getElementById('json-import-input').value = JSON.stringify(cleanPayload, null, 2);
+            importFromJSON(replaceAll);
+
+            if (targetCourseId) {
+                appData.selectedCourse = targetCourseId;
+            }
+            appData.quizLimit = 'ALL';
+            saveData();
+
+            closePDFPreviewDrawer();
+            renderCourseFilters();
+            prepareQuizList(false);
+            prepareFlashcardList();
+            renderEssayCases();
+            switchMode('quiz');
+            showToast(`Siap berlatih seluruh ${cleanPayload.quizzes.length} soal dari PDF!`);
+        }
+
+        async function initApp() {
+            try {
+                await loadDataAsync();
+                applyDarkMode();
+                setupPDFDragAndDrop();
+
+                try {
+                    const savedKey = window.localStorage ? window.localStorage.getItem(GEMINI_KEY_STORAGE) : null;
+                    const keyInput = document.getElementById('gemini-api-key-input');
+                    if (savedKey && keyInput) keyInput.value = savedKey;
+                } catch (e) {}
+
+                renderCourseFilters();
+                updateTopAndCourseStats();
+                prepareQuizList(false);
+                prepareFlashcardList();
+                renderEssayCases();
+                renderManageView();
+                switchMode(appData.activeMode || 'quiz');
+                pinNavBarToBottom();
+            } catch (err) {
+                console.error('Startup error recovered:', err);
+                resetDataToDefaultObject();
+                renderCourseFilters();
+                updateTopAndCourseStats();
+                prepareQuizList(false);
+                switchMode('quiz');
+                pinNavBarToBottom();
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+</html>
